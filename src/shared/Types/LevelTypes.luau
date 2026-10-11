@@ -27,6 +27,13 @@ export type PreplacedSlot = {
     special: SpecialPieceType?,
 }
 
+export type ObjectiveWeightConfig = {
+    baseWeight: number?,
+    objectiveBoost: number?,
+    deficitScale: number?,
+    targetObjectiveRatio: number?,
+}
+
 export type LevelDefinition = {
     id: number,
     title: string,
@@ -39,6 +46,7 @@ export type LevelDefinition = {
     preplacedGrid: { PreplacedSlot }?,
     coinReward: number,
     starReward: number,
+    objectiveWeightConfig: ObjectiveWeightConfig?,
 }
 
 return {}

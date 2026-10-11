@@ -4,12 +4,15 @@
 
 local BoardTypes
 local BoardCoord
+local SpawnWeightCalculator
 if typeof(script) == "Instance" and script.Parent then
     BoardTypes = require(script.Parent.Parent.Types.BoardTypes)
     BoardCoord = require(script.Parent.Parent.Utils.BoardCoord)
+    SpawnWeightCalculator = require(script.Parent.SpawnWeightCalculator)
 else
     BoardTypes = require("../Types/BoardTypes")
     BoardCoord = require("../Utils/BoardCoord")
+    SpawnWeightCalculator = require("./SpawnWeightCalculator")
 end
 
 type Coord = BoardTypes.Coord
@@ -96,7 +99,8 @@ function GravityResolver.refillEmptySlots(
     allowedColors: { TileColor },
     rng: any,
     idGenerator: () -> string,
-    emptySlots: { [string]: boolean }?
+    emptySlots: { [string]: boolean }?,
+    weights: { [TileColor]: number }?
 ): { { coord: Coord, tile: Tile } }
     local refilled: { { coord: Coord, tile: Tile } } = {}
     local actualRNG: RNG = rng or createDefaultRNG()
@@ -107,8 +111,9 @@ function GravityResolver.refillEmptySlots(
             local isCutout = emptySlots and emptySlots[key]
 
             if not isCutout and BoardCoord.getTile(grid, x, y) == nil then
-                local colorIndex = actualRNG:NextInteger(1, #allowedColors)
-                local chosenColor = allowedColors[colorIndex]
+                local chosenColor = if weights
+                    then SpawnWeightCalculator.pickWeightedColor(allowedColors, weights, actualRNG)
+                    else allowedColors[actualRNG:NextInteger(1, #allowedColors)]
 
                 local newTile: Tile = {
                     id = idGenerator(),

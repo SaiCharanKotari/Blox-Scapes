@@ -47,7 +47,8 @@ function GameplayAuthority.startLevel(playerOrId: any, levelId: number)
         return { success = false, message = "Level is locked" }
     end
 
-    local session = BoardLogic.createSession(levelDef)
+    local serverSeed = math.random(1, 2147483647)
+    local session = BoardLogic.createSession(levelDef, serverSeed)
     activeSessions[userId] = {
         session = session,
         levelId = levelId,

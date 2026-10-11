@@ -7,18 +7,21 @@ local LevelTypes
 local BoardCoord
 local MatchDetector
 local GravityResolver
+local SpawnWeightCalculator
 if typeof(script) == "Instance" and script.Parent then
     BoardTypes = require(script.Parent.Parent.Types.BoardTypes)
     LevelTypes = require(script.Parent.Parent.Types.LevelTypes)
     BoardCoord = require(script.Parent.Parent.Utils.BoardCoord)
     MatchDetector = require(script.Parent.MatchDetector)
     GravityResolver = require(script.Parent.GravityResolver)
+    SpawnWeightCalculator = require(script.Parent.SpawnWeightCalculator)
 else
     BoardTypes = require("../Types/BoardTypes")
     LevelTypes = require("../Types/LevelTypes")
     BoardCoord = require("../Utils/BoardCoord")
     MatchDetector = require("./MatchDetector")
     GravityResolver = require("./GravityResolver")
+    SpawnWeightCalculator = require("./SpawnWeightCalculator")
 end
 
 type Coord = BoardTypes.Coord
@@ -33,6 +36,7 @@ type SwapResult = BoardTypes.SwapResult
 type GameStatus = BoardTypes.GameStatus
 type ObjectiveState = BoardTypes.ObjectiveState
 type LevelDefinition = LevelTypes.LevelDefinition
+type ObjectiveWeightConfig = LevelTypes.ObjectiveWeightConfig
 
 export type BoardSession = {
     width: number,
@@ -45,6 +49,7 @@ export type BoardSession = {
     objectives: { ObjectiveState },
     rng: any,
     nextId: number,
+    weightConfig: ObjectiveWeightConfig?,
 }
 
 local BoardLogic = {}
@@ -141,6 +146,248 @@ function BoardLogic.findPossibleMoves(grid: Grid, width: number, height: number)
     return possibleMoves
 end
 
+-- Validates whether swapping fromCoord with toCoord is permissible
+function BoardLogic.validateSwap(session: BoardSession, fromCoord: Coord, toCoord: Coord): boolean
+    if session.status ~= "InProgress" then
+        return false
+    end
+    if not BoardCoord.isValid(fromCoord.x, fromCoord.y, session.width, session.height) then
+        return false
+    end
+    if not BoardCoord.isValid(toCoord.x, toCoord.y, session.width, session.height) then
+        return false
+    end
+    if not BoardCoord.isAdjacent(fromCoord, toCoord) then
+        return false
+    end
+
+    local t1 = BoardCoord.getTile(session.grid, fromCoord.x, fromCoord.y)
+    local t2 = BoardCoord.getTile(session.grid, toCoord.x, toCoord.y)
+    if not t1 or not t2 then
+        return false
+    end
+    if t1.blocker == "Stone" or t2.blocker == "Stone" then
+        return false
+    end
+
+    -- If either tile is a special piece (e.g. BlossomBomb), swap is automatically valid
+    if t1.special == "BlossomBomb" or t2.special == "BlossomBomb" then
+        return true
+    end
+
+    -- Check if swap produces a match
+    BoardCoord.setTile(session.grid, fromCoord.x, fromCoord.y, t2)
+    BoardCoord.setTile(session.grid, toCoord.x, toCoord.y, t1)
+
+    local matches = MatchDetector.findMatches(session.grid, session.width, session.height)
+    local hasMatch = #matches > 0
+
+    -- Revert swap
+    BoardCoord.setTile(session.grid, fromCoord.x, fromCoord.y, t1)
+    BoardCoord.setTile(session.grid, toCoord.x, toCoord.y, t2)
+
+    return hasMatch
+end
+
+-- Analyzes the resolved tiles collected by executing a swap, without mutating session
+function BoardLogic.analyzeMoveProductivity(
+    session: BoardSession,
+    fromCoord: Coord,
+    toCoord: Coord
+): { [TileColor]: number }
+    local collected: { [TileColor]: number } = {}
+
+    if not BoardLogic.validateSwap(session, fromCoord, toCoord) then
+        return collected
+    end
+
+    local cloneGrid = BoardCoord.cloneGrid(session.grid, session.width, session.height)
+    local t1 = BoardCoord.getTile(cloneGrid, fromCoord.x, fromCoord.y)
+    local t2 = BoardCoord.getTile(cloneGrid, toCoord.x, toCoord.y)
+    if not t1 or not t2 then
+        return collected
+    end
+
+    BoardCoord.setTile(cloneGrid, fromCoord.x, fromCoord.y, t2)
+    BoardCoord.setTile(cloneGrid, toCoord.x, toCoord.y, t1)
+
+    local clearedSet: { [string]: Coord } = {}
+
+    local function addClearedCoord(x: number, y: number)
+        if BoardCoord.isValid(x, y, session.width, session.height) then
+            local key = BoardCoord.toKey(x, y)
+            if not session.emptyCutouts[key] then
+                clearedSet[key] = BoardCoord.create(x, y)
+            end
+        end
+    end
+
+    if t1.special == "BlossomBomb" then
+        for dy = -1, 1 do
+            for dx = -1, 1 do
+                addClearedCoord(toCoord.x + dx, toCoord.y + dy)
+            end
+        end
+    end
+    if t2.special == "BlossomBomb" then
+        for dy = -1, 1 do
+            for dx = -1, 1 do
+                addClearedCoord(fromCoord.x + dx, fromCoord.y + dy)
+            end
+        end
+    end
+
+    local matches = MatchDetector.findMatches(cloneGrid, session.width, session.height)
+    for _, group in ipairs(matches) do
+        for _, coord in ipairs(group.coords) do
+            addClearedCoord(coord.x, coord.y)
+        end
+    end
+
+    for _, coord in pairs(clearedSet) do
+        local tile = BoardCoord.getTile(cloneGrid, coord.x, coord.y)
+        if tile and tile.color and tile.blocker ~= "Stone" then
+            collected[tile.color] = (collected[tile.color] or 0) + 1
+        end
+    end
+
+    return collected
+end
+
+-- Checks if a move is directly productive for a specific target color
+function BoardLogic.isMoveProductiveForColor(
+    session: BoardSession,
+    fromCoord: Coord,
+    toCoord: Coord,
+    color: TileColor
+): boolean
+    local productivity = BoardLogic.analyzeMoveProductivity(session, fromCoord, toCoord)
+    return (productivity[color] or 0) > 0
+end
+
+-- Finds all legal moves on the board that contribute directly to collecting a specific color
+function BoardLogic.findProductiveMoves(
+    session: BoardSession,
+    color: TileColor
+): { { from: Coord, to: Coord, collectedCount: number } }
+    local results: { { from: Coord, to: Coord, collectedCount: number } } = {}
+    local possibleMoves = BoardLogic.findPossibleMoves(session.grid, session.width, session.height)
+
+    for _, move in ipairs(possibleMoves) do
+        local productivity = BoardLogic.analyzeMoveProductivity(session, move.from, move.to)
+        local count = productivity[color] or 0
+        if count > 0 then
+            table.insert(results, {
+                from = move.from,
+                to = move.to,
+                collectedCount = count,
+            })
+        end
+    end
+
+    return results
+end
+
+-- Bounded, validated recovery mechanism guaranteeing productive moves for unfinished objectives
+-- Preserves dimensions, blockers, specials, moves remaining, and objective state
+function BoardLogic.ensureProductiveMoves(session: BoardSession): boolean
+    local width = session.width
+    local height = session.height
+
+    for _, obj in ipairs(session.objectives) do
+        if not obj.completed and obj.kind == "collect_color" and obj.color then
+            local color = obj.color
+            local prodMoves = BoardLogic.findProductiveMoves(session, color)
+
+            if #prodMoves == 0 then
+                local repaired = false
+
+                -- Try horizontal match-3 setup:
+                -- (x, y) = color, (x+1, y) = color, (x+2, y) != color, (x+2, y+1) = color
+                -- Swapping (x+2, y) and (x+2, y+1) creates a 3-match of color!
+                for y = 1, height - 1 do
+                    if repaired then break end
+                    for x = 1, width - 2 do
+                        local t1 = BoardCoord.getTile(session.grid, x, y)
+                        local t2 = BoardCoord.getTile(session.grid, x + 1, y)
+                        local t3 = BoardCoord.getTile(session.grid, x + 2, y)
+                        local t4 = BoardCoord.getTile(session.grid, x + 2, y + 1)
+
+                        local canModify = t1 and t2 and t3 and t4 and
+                            t1.blocker == nil and t2.blocker == nil and
+                            t3.blocker == nil and t4.blocker == nil and
+                            t1.special == nil and t2.special == nil and
+                            t3.special == nil and t4.special == nil
+
+                        if canModify and t3.color ~= color then
+                            local oldC1, oldC2, oldC4 = t1.color, t2.color, t4.color
+                            t1.color = color
+                            t2.color = color
+                            t4.color = color
+
+                            local imm = MatchDetector.findMatches(session.grid, width, height)
+                            if #imm == 0 then
+                                local cA = BoardCoord.create(x + 2, y)
+                                local cB = BoardCoord.create(x + 2, y + 1)
+                                if BoardLogic.isMoveProductiveForColor(session, cA, cB, color) then
+                                    repaired = true
+                                    break
+                                end
+                            end
+
+                            t1.color = oldC1
+                            t2.color = oldC2
+                            t4.color = oldC4
+                        end
+                    end
+                end
+
+                -- Try vertical match-3 setup if horizontal didn't succeed
+                if not repaired then
+                    for x = 1, width - 1 do
+                        if repaired then break end
+                        for y = 1, height - 2 do
+                            local t1 = BoardCoord.getTile(session.grid, x, y)
+                            local t2 = BoardCoord.getTile(session.grid, x, y + 1)
+                            local t3 = BoardCoord.getTile(session.grid, x, y + 2)
+                            local t4 = BoardCoord.getTile(session.grid, x + 1, y + 2)
+
+                            local canModify = t1 and t2 and t3 and t4 and
+                                t1.blocker == nil and t2.blocker == nil and
+                                t3.blocker == nil and t4.blocker == nil and
+                                t1.special == nil and t2.special == nil and
+                                t3.special == nil and t4.special == nil
+
+                            if canModify and t3.color ~= color then
+                                local oldC1, oldC2, oldC4 = t1.color, t2.color, t4.color
+                                t1.color = color
+                                t2.color = color
+                                t4.color = color
+
+                                local imm = MatchDetector.findMatches(session.grid, width, height)
+                                if #imm == 0 then
+                                    local cA = BoardCoord.create(x, y + 2)
+                                    local cB = BoardCoord.create(x + 1, y + 2)
+                                    if BoardLogic.isMoveProductiveForColor(session, cA, cB, color) then
+                                        repaired = true
+                                        break
+                                    end
+                                end
+
+                                t1.color = oldC1
+                                t2.color = oldC2
+                                t4.color = oldC4
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return true
+end
+
 -- Reshuffles movable tiles when 0 legal moves remain
 function BoardLogic.reshuffleBoard(session: BoardSession): boolean
     local movableCoords: { Coord } = {}
@@ -235,6 +482,12 @@ function BoardLogic.reshuffleBoard(session: BoardSession): boolean
     end
 
     -- Deterministic fallback: place colors ensuring 0 immediate matches and >= 1 move
+    local fallbackWeights = SpawnWeightCalculator.calculateWeights(
+        session.allowedColors,
+        session.objectives,
+        session.weightConfig
+    )
+
     for y = 1, session.height do
         for x = 1, session.width do
             local key = BoardCoord.toKey(x, y)
@@ -246,8 +499,8 @@ function BoardLogic.reshuffleBoard(session: BoardSession): boolean
                     end
                 end
                 local chosenColor = if #validColors > 0
-                    then validColors[session.rng:NextInteger(1, #validColors)]
-                    else session.allowedColors[session.rng:NextInteger(1, #session.allowedColors)]
+                    then SpawnWeightCalculator.pickWeightedColor(validColors, fallbackWeights, session.rng)
+                    else SpawnWeightCalculator.pickWeightedColor(session.allowedColors, fallbackWeights, session.rng)
 
                 BoardCoord.setTile(session.grid, x, y, {
                     id = generateTileId(session),
@@ -260,6 +513,7 @@ function BoardLogic.reshuffleBoard(session: BoardSession): boolean
         end
     end
 
+    BoardLogic.ensureProductiveMoves(session)
     return true
 end
 
@@ -322,83 +576,105 @@ function BoardLogic.createSession(levelDef: LevelDefinition, seed: number?): Boa
         end
     end
 
-    -- Fill remaining empty slots without forming immediate 3-matches
-    for y = 1, height do
-        for x = 1, width do
-            local key = BoardCoord.toKey(x, y)
-            if not emptyCutouts[key] and BoardCoord.getTile(grid, x, y) == nil then
-                local validColors: { TileColor } = {}
-                for _, color in ipairs(levelDef.allowedColors) do
-                    if not wouldCreateImmediateMatch(grid, x, y, color) then
-                        table.insert(validColors, color)
+    -- Compute objective-aware initial spawn weights
+    local initialWeights = SpawnWeightCalculator.calculateWeights(
+        levelDef.allowedColors,
+        session.objectives,
+        session.weightConfig
+    )
+
+    -- Attempt up to 50 times to generate an opening board with:
+    -- 1. No immediate matches
+    -- 2. At least one legal move
+    -- 3. At least one productive move for EACH unfinished objective color
+    local maxAttempts = 50
+    local boardAccepted = false
+
+    for _ = 1, maxAttempts do
+        -- Clear non-preplaced slots
+        for y = 1, height do
+            for x = 1, width do
+                local key = BoardCoord.toKey(x, y)
+                if not emptyCutouts[key] then
+                    local isPreplaced = false
+                    if levelDef.preplacedGrid then
+                        for _, slot in ipairs(levelDef.preplacedGrid) do
+                            if slot.x == x and slot.y == y then
+                                isPreplaced = true
+                                break
+                            end
+                        end
+                    end
+                    if not isPreplaced then
+                        BoardCoord.setTile(grid, x, y, nil)
                     end
                 end
+            end
+        end
 
-                local chosenColor = if #validColors > 0 
-                    then validColors[rng:NextInteger(1, #validColors)] 
-                    else levelDef.allowedColors[rng:NextInteger(1, #levelDef.allowedColors)]
+        -- Fill remaining empty slots with weighted randomness avoiding immediate 3-matches
+        for y = 1, height do
+            for x = 1, width do
+                local key = BoardCoord.toKey(x, y)
+                if not emptyCutouts[key] and BoardCoord.getTile(grid, x, y) == nil then
+                    local validColors: { TileColor } = {}
+                    for _, color in ipairs(levelDef.allowedColors) do
+                        if not wouldCreateImmediateMatch(grid, x, y, color) then
+                            table.insert(validColors, color)
+                        end
+                    end
 
-                BoardCoord.setTile(grid, x, y, {
-                    id = generateTileId(session),
-                    color = chosenColor,
-                    blocker = nil,
-                    special = nil,
-                    isMatched = false,
-                })
+                    local chosenColor: TileColor
+                    if #validColors > 0 then
+                        chosenColor = SpawnWeightCalculator.pickWeightedColor(validColors, initialWeights, rng)
+                    else
+                        chosenColor = SpawnWeightCalculator.pickWeightedColor(levelDef.allowedColors, initialWeights, rng)
+                    end
+
+                    BoardCoord.setTile(grid, x, y, {
+                        id = generateTileId(session),
+                        color = chosenColor,
+                        blocker = nil,
+                        special = nil,
+                        isMatched = false,
+                    })
+                end
+            end
+        end
+
+        local possibleMoves = BoardLogic.findPossibleMoves(grid, width, height)
+        if #possibleMoves > 0 then
+            local allObjectivesCovered = true
+            for _, obj in ipairs(session.objectives) do
+                if not obj.completed and obj.kind == "collect_color" and obj.color then
+                    local prod = BoardLogic.findProductiveMoves(session, obj.color)
+                    if #prod == 0 then
+                        allObjectivesCovered = false
+                        break
+                    end
+                end
+            end
+
+            if allObjectivesCovered then
+                boardAccepted = true
+                break
             end
         end
     end
 
-    -- Guarantee at least one valid legal move exists
-    local possibleMoves = BoardLogic.findPossibleMoves(grid, width, height)
-    if #possibleMoves == 0 then
+    -- If after maxAttempts some objectives lack productive moves, apply bounded recovery
+    if not boardAccepted then
+        BoardLogic.ensureProductiveMoves(session)
+    end
+
+    -- Final guarantee: at least one legal move exists
+    local finalMoves = BoardLogic.findPossibleMoves(grid, width, height)
+    if #finalMoves == 0 then
         BoardLogic.reshuffleBoard(session)
+        BoardLogic.ensureProductiveMoves(session)
     end
 
     return session
-end
-
--- Validates whether swapping fromCoord with toCoord is permissible
-function BoardLogic.validateSwap(session: BoardSession, fromCoord: Coord, toCoord: Coord): boolean
-    if session.status ~= "InProgress" then
-        return false
-    end
-    if not BoardCoord.isValid(fromCoord.x, fromCoord.y, session.width, session.height) then
-        return false
-    end
-    if not BoardCoord.isValid(toCoord.x, toCoord.y, session.width, session.height) then
-        return false
-    end
-    if not BoardCoord.isAdjacent(fromCoord, toCoord) then
-        return false
-    end
-
-    local t1 = BoardCoord.getTile(session.grid, fromCoord.x, fromCoord.y)
-    local t2 = BoardCoord.getTile(session.grid, toCoord.x, toCoord.y)
-    if not t1 or not t2 then
-        return false
-    end
-    if t1.blocker == "Stone" or t2.blocker == "Stone" then
-        return false
-    end
-
-    -- If either tile is a special piece (e.g. BlossomBomb), swap is automatically valid
-    if t1.special == "BlossomBomb" or t2.special == "BlossomBomb" then
-        return true
-    end
-
-    -- Check if swap produces a match
-    BoardCoord.setTile(session.grid, fromCoord.x, fromCoord.y, t2)
-    BoardCoord.setTile(session.grid, toCoord.x, toCoord.y, t1)
-
-    local matches = MatchDetector.findMatches(session.grid, session.width, session.height)
-    local hasMatch = #matches > 0
-
-    -- Revert swap
-    BoardCoord.setTile(session.grid, fromCoord.x, fromCoord.y, t1)
-    BoardCoord.setTile(session.grid, toCoord.x, toCoord.y, t2)
-
-    return hasMatch
 end
 
 -- Tracks progress towards objectives
@@ -569,7 +845,13 @@ function BoardLogic.executeSwap(session: BoardSession, fromCoord: Coord, toCoord
         -- Apply gravity drops
         local shifts = GravityResolver.applyGravity(session.grid, session.width, session.height, session.emptyCutouts)
 
-        -- Refill top empty slots
+        -- Refill top empty slots using objective-aware dynamic weights
+        local currentWeights = SpawnWeightCalculator.calculateWeights(
+            session.allowedColors,
+            session.objectives,
+            session.weightConfig
+        )
+
         local refilled = GravityResolver.refillEmptySlots(
             session.grid,
             session.width,
@@ -577,7 +859,8 @@ function BoardLogic.executeSwap(session: BoardSession, fromCoord: Coord, toCoord
             session.allowedColors,
             session.rng,
             function() return generateTileId(session) end,
-            session.emptyCutouts
+            session.emptyCutouts,
+            currentWeights
         )
 
         table.insert(cascadeSteps, {
@@ -599,6 +882,7 @@ function BoardLogic.executeSwap(session: BoardSession, fromCoord: Coord, toCoord
         local remainingMoves = BoardLogic.findPossibleMoves(session.grid, session.width, session.height)
         if #remainingMoves == 0 then
             reshuffled = BoardLogic.reshuffleBoard(session)
+            BoardLogic.ensureProductiveMoves(session)
         end
     end
 

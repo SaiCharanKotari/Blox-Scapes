@@ -1,7 +1,12 @@
 --!strict
 -- LevelRegistry: Registered data-driven levels for Project Bloomtrail
 
-local LevelTypes = require(script.Parent.Parent.Types.LevelTypes)
+local LevelTypes
+if typeof(script) == "Instance" and script.Parent then
+    LevelTypes = require(script.Parent.Parent.Types.LevelTypes)
+else
+    LevelTypes = require("../Types/LevelTypes")
+end
 type LevelDefinition = LevelTypes.LevelDefinition
 
 local Levels: { [number]: LevelDefinition } = {
@@ -19,6 +24,12 @@ local Levels: { [number]: LevelDefinition } = {
         starThresholds = { 1000, 2000, 3000 },
         coinReward = 50,
         starReward = 1,
+        objectiveWeightConfig = {
+            baseWeight = 1.0,
+            objectiveBoost = 0.5,
+            deficitScale = 0.5,
+            targetObjectiveRatio = 0.60, -- 60% total across unfinished objectives (30% Leaf, 30% Berry baseline)
+        },
     },
     [2] = {
         id = 2,
