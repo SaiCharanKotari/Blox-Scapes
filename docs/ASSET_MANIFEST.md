@@ -30,10 +30,29 @@
 
 | Model Identifier | Polycount Target | Texture Budget | Location | Purpose | Status | Source / Note |
 |---|---|---|---|---|---|---|
-| `courtyard_fountain_overgrown` | < 3,500 tris | 1024x1024 diffuse | Workspace.GardenArea | Stage 0: Dry cracked fountain covered in moss and vines | Placeholder | Modular Roblox CSG / Meshes |
-| `courtyard_fountain_restored` | < 4,000 tris | 1024x1024 diffuse | Workspace.GardenArea | Stage 1: Clean limestone fountain with flowing particle water | Placeholder | Modular Roblox CSG / Meshes |
-| `courtyard_paving_stones` | < 1,500 tris | Tileable PBR | Workspace.GardenArea | Courtyard ground floor stone texture | Placeholder | Roblox MaterialService |
-| `courtyard_archway_trellis` | < 2,000 tris | 512x512 | Workspace.GardenArea | Wooden perimeter archway with climbing roses | Placeholder | Roblox Studio parts |
+| `courtyard_fountain_overgrown` | < 3,500 tris | 1024x1024 diffuse | Workspace.BloomtrailWorld.MansionPlot.CourtyardFountain | Stage 0: Dry cracked fountain covered in moss and vines | Built & Verified | Procedural CSG / Particle system |
+| `courtyard_fountain_restored` | < 4,000 tris | 1024x1024 diffuse | Workspace.BloomtrailWorld.MansionPlot.CourtyardFountain | Stage 1: Clean limestone fountain with flowing particle water | Built & Verified | Procedural CSG / Particle system |
+| `courtyard_paving_stones` | < 1,500 tris | Tileable PBR | Workspace.BloomtrailWorld.MansionPlot.CourtyardPromenade | Courtyard ground floor stone texture | Built & Verified | Roblox MaterialService Cobblestone |
+| `bloomtrail_mansion_hero` | 1,345 parts / ~80k tris | Detailed PBR / Stylised European | Workspace.BloomtrailWorld.MansionPlot.BloomtrailMansion | Gate 3.3 Grand European Manor (Exterior + Furnished Two-Floor Interior) | Integrated & Verified | Asset ID 85038976358450 + Custom Architecture & Furnishings |
+
+---
+
+## 2.1. Manor Architectural & Furnishing Manifest (Gate 3.3)
+
+| Room / Component | Level | Description & Key Objects | Restoration Hooks (`RestorationReadyObjects`) |
+|---|---|---|---|
+| **Exterior Chateau Shell** | Exterior | French Mansard slate roof, limestone cornices, dormers, chimneys, arched entrance portal, steps | Mansion Exterior, Landscaping |
+| **Grand Entrance Hall** | Ground Floor | Double-height foyer, crystal chandelier with point light, marble console table, floral vase | `EntranceHall_Chandelier` |
+| **Living / TV Room** | Ground Floor | Olive sectional sofa, solid timber coffee table, tea set, walnut TV console & wide screen, decoupled rug | `LivingRoom_MainSofa`, `LivingRoom_Carpet` |
+| **Formal Lounge** | Ground Floor | Crimson wingback armchairs, mahogany parlor table, brass candelabra with warm illumination, Persian rug | Future parlor restoration |
+| **Kitchen & Dining** | Ground Floor | L-shaped granite counters, undermount sink, brass faucet, range cooker & hood, fridge, 6-seat dining table | `Kitchen_CabinetSet` |
+| **King Bedroom** | Ground Floor | King bed, charcoal tufted headboard, dual nightstands with lamps, armoire wardrobe, decoupled carpet | `KingBedroom_Carpet` (future red vs white carpet choice) |
+| **Grand Staircase** | Circulation | Continuous marble ramps & decorative treads, intermediate landing, dual return flights to upper mezzanine | Primary vertical circulation |
+| **Upper Landing & Gallery** | Second Floor | Mezzanine gallery overlooking foyer, protective marble balustrades, burgundy runner rugs, wall sconces | Upper gallery circulation |
+| **Kids' Bedroom** | Second Floor | Wooden two-tier bunk bed with ladder, toy chest with colorful building blocks, play desk & chair, play rug | `Kids_BunkBed` |
+| **Single Bedroom** | Second Floor | Single bed with dark walnut frame & olive duvet, study desk with lamp, tall bookcase, soft area rug | Future study restoration |
+| **Storage Room** | Second Floor | Timber storage racks, vintage leather trunks, stacked wooden crates, dust-sheet covered furniture, hanging bulb | Future attic cleanup |
+| **Family Bathroom** | Second Floor | Clawfoot marble bathtub, walk-in glass shower enclosure, vanity with basin & mirror, toilet, porcelain tiles | `Bathroom_Bathtub` |
 
 ---
 
