@@ -13,8 +13,8 @@ local Levels: { [number]: LevelDefinition } = {
         moveLimit = 25,
         allowedColors = { "Berry", "Leaf", "Blossom", "Dewdrop" },
         objectives = {
-            { kind = "collect_color", color = "Leaf", targetCount = 15 },
-            { kind = "collect_color", color = "Berry", targetCount = 10 },
+            { kind = "collect_color", color = "Leaf", targetCount = 8 },
+            { kind = "collect_color", color = "Berry", targetCount = 6 },
         },
         starThresholds = { 1000, 2000, 3000 },
         coinReward = 50,

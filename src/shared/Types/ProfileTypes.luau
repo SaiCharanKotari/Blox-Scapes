@@ -29,4 +29,26 @@ export type PlayerProfile = {
     meta: PlayerMeta,
 }
 
-return {}
+local ProfileTypes = {}
+
+function ProfileTypes.createDefaultProfile(): PlayerProfile
+    return {
+        schemaVersion = 1,
+        unlockedLevel = 1,
+        stars = 0,
+        coins = 100,
+        completedLevels = {},
+        gardenState = {
+            currentArea = "CourtyardFountain",
+            completedTasks = {},
+            currentStage = 0,
+        },
+        meta = {
+            createdAt = os.time(),
+            lastSavedAt = os.time(),
+            sessionCount = 1,
+        },
+    }
+end
+
+return ProfileTypes

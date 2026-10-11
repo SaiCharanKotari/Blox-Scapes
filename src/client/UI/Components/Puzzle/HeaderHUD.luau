@@ -21,6 +21,7 @@ export type HeaderHUDProps = {
     objectives: { ObjectiveState },
     status: GameStatus,
     onRestart: () -> (),
+    onReturnToMap: (() -> ())?,
 }
 
 local function HeaderHUD(props: HeaderHUDProps)
@@ -109,9 +110,9 @@ local function HeaderHUD(props: HeaderHUDProps)
             Thickness = 2.5,
         }),
 
-        -- Left Section: Level Title & Restart Button
+        -- Left Section: Level Title & Navigation Buttons
         LeftSection = React.createElement("Frame", {
-            Size = UDim2.new(0.34, 0, 1, 0),
+            Size = UDim2.new(0.38, 0, 1, 0),
             Position = UDim2.new(0, 10, 0.5, 0),
             AnchorPoint = Vector2.new(0, 0.5),
             BackgroundTransparency = 1,
@@ -119,14 +120,27 @@ local function HeaderHUD(props: HeaderHUDProps)
             Layout = React.createElement("UIListLayout", {
                 FillDirection = Enum.FillDirection.Horizontal,
                 VerticalAlignment = Enum.VerticalAlignment.Center,
-                Padding = UDim.new(0, 8),
+                Padding = UDim.new(0, 6),
+            }),
+            MapButton = props.onReturnToMap and React.createElement("TextButton", {
+                Size = UDim2.new(0, 32, 0, 32),
+                BackgroundColor3 = ThemeTokens.Colors.RiverStone,
+                Text = "←",
+                Font = ThemeTokens.Typography.DisplayHero.Font,
+                TextSize = 18,
+                TextColor3 = ThemeTokens.Colors.CedarUmber,
+                AutoButtonColor = true,
+                [React.Event.Activated] = props.onReturnToMap,
+            }, {
+                Corner = React.createElement("UICorner", { CornerRadius = ThemeTokens.Radii.Pill }),
+                Stroke = React.createElement("UIStroke", { Color = ThemeTokens.Colors.CedarUmber, Thickness = 1.5 }),
             }),
             RestartButton = React.createElement("TextButton", {
-                Size = UDim2.new(0, 34, 0, 34),
+                Size = UDim2.new(0, 32, 0, 32),
                 BackgroundColor3 = ThemeTokens.Colors.RiverStone,
                 Text = "↺",
                 Font = ThemeTokens.Typography.DisplayHero.Font,
-                TextSize = 20,
+                TextSize = 18,
                 TextColor3 = ThemeTokens.Colors.CedarUmber,
                 AutoButtonColor = true,
                 [React.Event.Activated] = props.onRestart,

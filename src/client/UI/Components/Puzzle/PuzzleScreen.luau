@@ -1,6 +1,6 @@
 --!strict
 -- PuzzleScreen.luau: Declarative React-Lua screen coordinating HUD, animated 8x8 match-3 grid, and victory/defeat modals
--- Integrates directly with pure Luau BoardLogic simulation engine and AnimationCoordinator
+-- Integrates with server authority via ClientNetwork and pure Luau BoardLogic simulation engine
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Packages = ReplicatedStorage:WaitForChild("Packages")
@@ -9,6 +9,7 @@ local React = require(Packages:WaitForChild("React"))
 local BloomtrailShared = ReplicatedStorage:WaitForChild("BloomtrailShared")
 local BoardTypes = require(BloomtrailShared:WaitForChild("Types"):WaitForChild("BoardTypes"))
 local LevelTypes = require(BloomtrailShared:WaitForChild("Types"):WaitForChild("LevelTypes"))
+local ProfileTypes = require(BloomtrailShared:WaitForChild("Types"):WaitForChild("ProfileTypes"))
 local BoardCoord = require(BloomtrailShared:WaitForChild("Utils"):WaitForChild("BoardCoord"))
 local BoardLogic = require(BloomtrailShared:WaitForChild("Puzzle"):WaitForChild("BoardLogic"))
 local ThemeTokens = require(BloomtrailShared:WaitForChild("Config"):WaitForChild("ThemeTokens"))
@@ -18,16 +19,23 @@ local HeaderHUD = require(script.Parent.HeaderHUD)
 local MatchGrid = require(script.Parent.MatchGrid)
 local AnimationCoordinator = require(script.Parent.AnimationCoordinator)
 
+local BloomtrailClient = script:FindFirstAncestor("BloomtrailClient")
+local ClientNetwork = require(BloomtrailClient:WaitForChild("Network"):WaitForChild("ClientNetwork"))
+
 type Coord = BoardTypes.Coord
 type Grid = BoardTypes.Grid
 type Tile = BoardTypes.Tile
 type BoardSession = BoardLogic.BoardSession
 type GameStatus = BoardTypes.GameStatus
 type ObjectiveState = BoardTypes.ObjectiveState
+type PlayerProfile = ProfileTypes.PlayerProfile
 type DisplayTile = MatchGrid.DisplayTile
 
 export type PuzzleScreenProps = {
     levelId: number?,
+    onReturnToMap: (() -> ())?,
+    onOpenGarden: (() -> ())?,
+    onProfileUpdated: ((profile: PlayerProfile) -> ())?,
 }
 
 -- Helper to convert authoritative grid into presentation tiles dictionary
@@ -58,8 +66,8 @@ local function PuzzleScreen(props: PuzzleScreenProps)
         moveLimit = 25,
         allowedColors = { "Berry", "Leaf", "Blossom", "Dewdrop" },
         objectives = {
-            { kind = "collect_color", color = "Leaf", targetCount = 15 },
-            { kind = "collect_color", color = "Berry", targetCount = 10 },
+            { kind = "collect_color", color = "Leaf", targetCount = 8 },
+            { kind = "collect_color", color = "Berry", targetCount = 6 },
         },
         starThresholds = { 1000, 2000, 3000 },
         coinReward = 50,
@@ -80,7 +88,31 @@ local function PuzzleScreen(props: PuzzleScreenProps)
     local gameStatus, setGameStatus = React.useState("InProgress" :: GameStatus)
     local selectedCoord, setSelectedCoord = React.useState(nil :: Coord?)
     local isResolving, setIsResolving = React.useState(false)
-    local hasAwardedRewards, setHasAwardedRewards = React.useState(false)
+
+    -- Request authoritative level start from server on mount
+    React.useEffect(function()
+        task.spawn(function()
+            local serverRes = ClientNetwork.requestStartLevel(levelId)
+            if serverRes and serverRes.success and serverRes.initialGrid then
+                local s: BoardSession = {
+                    width = serverRes.width,
+                    height = serverRes.height,
+                    grid = serverRes.initialGrid,
+                    allowedColors = levelDef.allowedColors,
+                    emptyCutouts = {},
+                    movesRemaining = serverRes.moveLimit,
+                    status = "InProgress" :: GameStatus,
+                    objectives = serverRes.objectives,
+                    rng = BoardLogic.createRNG(),
+                    nextId = 64,
+                }
+                setSession(s)
+                setDisplayTiles(createDisplayTilesFromGrid(s.grid, s.width, s.height))
+                setDisplayedMoves(s.movesRemaining)
+                setDisplayedObjectives(s.objectives)
+            end
+        end)
+    end, { levelId })
 
     -- 2. Refs for Instances and Animation Overlay
     local tileRefs = React.useRef({} :: { [string]: GuiObject })
@@ -106,6 +138,9 @@ local function PuzzleScreen(props: PuzzleScreenProps)
 
     -- 3. Restart Handler
     local handleRestart = React.useCallback(function()
+        -- Request server restart
+        ClientNetwork.requestRestartLevel(levelId)
+
         local newSession = BoardLogic.createSession(levelDef)
         setSession(newSession)
         setDisplayTiles(createDisplayTilesFromGrid(newSession.grid, newSession.width, newSession.height))
@@ -114,8 +149,7 @@ local function PuzzleScreen(props: PuzzleScreenProps)
         setSelectedCoord(nil)
         setIsResolving(false)
         setGameStatus("InProgress")
-        setHasAwardedRewards(false)
-    end, { levelDef })
+    end, { levelDef, levelId })
 
     -- 4. Move Execution and Cascade Coordinator
     local executeMove = React.useCallback(function(fromCoord: Coord, toCoord: Coord)
@@ -147,6 +181,21 @@ local function PuzzleScreen(props: PuzzleScreenProps)
                 return
             end
 
+            -- Request server authoritative swap
+            local serverResult = ClientNetwork.requestSwap(fromCoord, toCoord)
+            if serverResult and not serverResult.valid then
+                AnimationCoordinator.animateInvalidRebound(
+                    rbxA,
+                    fromCoord,
+                    rbxB,
+                    toCoord,
+                    session.width,
+                    session.height
+                )
+                setIsResolving(false)
+                return
+            end
+
             -- Valid swap: play adjacent tile swap tween
             AnimationCoordinator.animateSwap(
                 rbxA,
@@ -157,11 +206,24 @@ local function PuzzleScreen(props: PuzzleScreenProps)
                 session.height
             )
 
-            -- Authoritative swap resolution
-            local swapResult = BoardLogic.executeSwap(session, fromCoord, toCoord)
+            if serverResult and serverResult.approvedProfile and props.onProfileUpdated then
+                props.onProfileUpdated(serverResult.approvedProfile)
+            end
+
+            -- If server returned cascade steps, use server's authoritative cascades; otherwise fallback to local BoardLogic
+            local swapResult = if serverResult and serverResult.cascadeSteps
+                then {
+                    valid = true,
+                    cascadeSteps = serverResult.cascadeSteps,
+                    movesRemaining = serverResult.movesRemaining or (session.movesRemaining - 1),
+                    reshuffled = serverResult.reshuffled,
+                }
+                else BoardLogic.executeSwap(session, fromCoord, toCoord)
 
             -- Deduct moves in presentation HUD
-            setDisplayedMoves(session.movesRemaining)
+            local newMoves = if serverResult and serverResult.movesRemaining then serverResult.movesRemaining else (session.movesRemaining - 1)
+            session.movesRemaining = newMoves
+            setDisplayedMoves(newMoves)
 
             -- Swap positions in current display representation
             local workingTiles: { [string]: DisplayTile } = {}
@@ -272,7 +334,7 @@ local function PuzzleScreen(props: PuzzleScreenProps)
 
                     -- Top refills: add to working set and prepare entry drops
                     local refillList: { { instance: GuiObject, toCoord: Coord, startYOffset: number } } = {}
-                    for refillIndex, refill in ipairs(step.refilledTiles) do
+                    for _, refill in ipairs(step.refilledTiles) do
                         workingTiles[refill.tile.id] = {
                             id = refill.tile.id,
                             coord = refill.coord,
@@ -309,7 +371,17 @@ local function PuzzleScreen(props: PuzzleScreenProps)
                 end
             end
 
-            -- Final Settled Board Synchronization
+            -- Final Settled Board Synchronization from authoritative server
+            if serverResult and serverResult.finalGrid then
+                session.grid = serverResult.finalGrid
+            end
+            if serverResult and serverResult.objectives then
+                session.objectives = serverResult.objectives
+            end
+            if serverResult and serverResult.status then
+                session.status = serverResult.status
+            end
+
             setDisplayTiles(createDisplayTilesFromGrid(session.grid, session.width, session.height))
             setDisplayedObjectives(session.objectives)
 
@@ -321,9 +393,6 @@ local function PuzzleScreen(props: PuzzleScreenProps)
             -- Evaluate Victory / Defeat ONLY after complete cascade resolution
             if session.status == "Won" then
                 setGameStatus("Won")
-                if not hasAwardedRewards then
-                    setHasAwardedRewards(true)
-                end
             elseif session.status == "Lost" then
                 setGameStatus("Lost")
             else
@@ -331,7 +400,7 @@ local function PuzzleScreen(props: PuzzleScreenProps)
                 setIsResolving(false)
             end
         end)
-    end, { session, displayTiles, hasAwardedRewards, getDisplayTileAt })
+    end, { session, displayTiles, getDisplayTileAt, props.onProfileUpdated })
 
     -- 5. Tile Interaction Handler
     local handleTileClick = React.useCallback(function(coord: Coord)
@@ -376,6 +445,7 @@ local function PuzzleScreen(props: PuzzleScreenProps)
             objectives = displayedObjectives,
             status = gameStatus,
             onRestart = handleRestart,
+            onReturnToMap = props.onReturnToMap,
         }),
 
         -- Centered 8x8 Board Container
@@ -404,6 +474,107 @@ local function PuzzleScreen(props: PuzzleScreenProps)
             ZIndex = 50,
         }, {
             ModalCard = React.createElement("Frame", {
+                Size = UDim2.new(0, 320, 0, 260),
+                Position = UDim2.fromScale(0.5, 0.5),
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundColor3 = ThemeTokens.Colors.ParchmentIvory,
+                BorderSizePixel = 0,
+            }, {
+                Corner = React.createElement("UICorner", {
+                    CornerRadius = ThemeTokens.Radii.Modal,
+                }),
+                Stroke = React.createElement("UIStroke", {
+                    Color = ThemeTokens.Colors.CedarUmber,
+                    Thickness = 4,
+                }),
+                Title = React.createElement("TextLabel", {
+                    Size = UDim2.new(1, 0, 0, 44),
+                    Position = UDim2.new(0.5, 0, 0, 16),
+                    AnchorPoint = Vector2.new(0.5, 0),
+                    BackgroundTransparency = 1,
+                    Text = "LEVEL COMPLETE!",
+                    Font = ThemeTokens.Typography.DisplayHero.Font,
+                    TextSize = 24,
+                    TextColor3 = ThemeTokens.Colors.CedarUmber,
+                }),
+                RewardText = React.createElement("TextLabel", {
+                    Size = UDim2.new(1, 0, 0, 32),
+                    Position = UDim2.new(0.5, 0, 0, 64),
+                    AnchorPoint = Vector2.new(0.5, 0),
+                    BackgroundTransparency = 1,
+                    Text = "+1 STAR ⭐   +50 COINS 🪙",
+                    Font = ThemeTokens.Typography.MetricValue.Font,
+                    TextSize = 17,
+                    TextColor3 = ThemeTokens.Colors.StarGold,
+                }),
+                
+                -- Actions layout
+                Actions = React.createElement("Frame", {
+                    Size = UDim2.new(1, -32, 0, 100),
+                    Position = UDim2.new(0.5, 0, 1, -16),
+                    AnchorPoint = Vector2.new(0.5, 1),
+                    BackgroundTransparency = 1,
+                }, {
+                    Layout = React.createElement("UIListLayout", {
+                        FillDirection = Enum.FillDirection.Vertical,
+                        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                        VerticalAlignment = Enum.VerticalAlignment.Center,
+                        Padding = UDim.new(0, 10),
+                    }),
+                    -- Primary: Go to Garden restoration
+                    GardenButton = React.createElement("TextButton", {
+                        Size = UDim2.new(1, 0, 0, 44),
+                        BackgroundColor3 = ThemeTokens.Colors.LeafSage,
+                        Text = "RESTORE GARDEN 🌿",
+                        Font = ThemeTokens.Typography.ButtonLabel.Font,
+                        TextSize = 15,
+                        TextColor3 = Color3.fromRGB(255, 255, 255),
+                        AutoButtonColor = true,
+                        [React.Event.Activated] = function()
+                            if props.onOpenGarden then
+                                props.onOpenGarden()
+                            elseif props.onReturnToMap then
+                                props.onReturnToMap()
+                            else
+                                handleRestart()
+                            end
+                        end,
+                    }, {
+                        Corner = React.createElement("UICorner", { CornerRadius = ThemeTokens.Radii.Pill }),
+                        Stroke = React.createElement("UIStroke", { Color = ThemeTokens.Colors.BotanicalForest, Thickness = 1.5 }),
+                    }),
+                    -- Secondary: Return to Map
+                    MapButton = React.createElement("TextButton", {
+                        Size = UDim2.new(1, 0, 0, 38),
+                        BackgroundColor3 = ThemeTokens.Colors.RiverStone,
+                        Text = "RETURN TO MAP 🌸",
+                        Font = ThemeTokens.Typography.ButtonLabel.Font,
+                        TextSize = 14,
+                        TextColor3 = ThemeTokens.Colors.CedarUmber,
+                        AutoButtonColor = true,
+                        [React.Event.Activated] = function()
+                            if props.onReturnToMap then
+                                props.onReturnToMap()
+                            else
+                                handleRestart()
+                            end
+                        end,
+                    }, {
+                        Corner = React.createElement("UICorner", { CornerRadius = ThemeTokens.Radii.Pill }),
+                        Stroke = React.createElement("UIStroke", { Color = ThemeTokens.Colors.CedarUmber, Thickness = 1.5 }),
+                    }),
+                }),
+            }),
+        }),
+
+        -- DEFEAT / OUT OF MOVES MODAL OVERLAY
+        DefeatOverlay = (gameStatus == "Lost") and React.createElement("Frame", {
+            Size = UDim2.fromScale(1, 1),
+            BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+            BackgroundTransparency = 0.45,
+            ZIndex = 50,
+        }, {
+            ModalCard = React.createElement("Frame", {
                 Size = UDim2.new(0, 320, 0, 240),
                 Position = UDim2.fromScale(0.5, 0.5),
                 AnchorPoint = Vector2.new(0.5, 0.5),
@@ -418,71 +589,7 @@ local function PuzzleScreen(props: PuzzleScreenProps)
                     Thickness = 4,
                 }),
                 Title = React.createElement("TextLabel", {
-                    Size = UDim2.new(1, 0, 0, 48),
-                    Position = UDim2.new(0.5, 0, 0, 16),
-                    AnchorPoint = Vector2.new(0.5, 0),
-                    BackgroundTransparency = 1,
-                    Text = "LEVEL COMPLETE!",
-                    Font = ThemeTokens.Typography.DisplayHero.Font,
-                    TextSize = 24,
-                    TextColor3 = ThemeTokens.Colors.CedarUmber,
-                }),
-                RewardText = React.createElement("TextLabel", {
-                    Size = UDim2.new(1, 0, 0, 36),
-                    Position = UDim2.new(0.5, 0, 0, 72),
-                    AnchorPoint = Vector2.new(0.5, 0),
-                    BackgroundTransparency = 1,
-                    Text = "+1 STAR    +50 COINS",
-                    Font = ThemeTokens.Typography.MetricValue.Font,
-                    TextSize = 18,
-                    TextColor3 = ThemeTokens.Colors.StarGold,
-                }),
-                ContinueButton = React.createElement("TextButton", {
-                    Size = UDim2.new(0, 180, 0, 46),
-                    Position = UDim2.new(0.5, 0, 1, -24),
-                    AnchorPoint = Vector2.new(0.5, 1),
-                    BackgroundColor3 = ThemeTokens.Colors.LeafSage,
-                    Text = "PLAY AGAIN",
-                    Font = ThemeTokens.Typography.ButtonLabel.Font,
-                    TextSize = 16,
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    AutoButtonColor = true,
-                    [React.Event.Activated] = handleRestart,
-                }, {
-                    Corner = React.createElement("UICorner", {
-                        CornerRadius = ThemeTokens.Radii.Pill,
-                    }),
-                    Stroke = React.createElement("UIStroke", {
-                        Color = ThemeTokens.Colors.BotanicalForest,
-                        Thickness = 2,
-                    }),
-                }),
-            }),
-        }),
-
-        -- DEFEAT / OUT OF MOVES MODAL OVERLAY
-        DefeatOverlay = (gameStatus == "Lost") and React.createElement("Frame", {
-            Size = UDim2.fromScale(1, 1),
-            BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-            BackgroundTransparency = 0.45,
-            ZIndex = 50,
-        }, {
-            ModalCard = React.createElement("Frame", {
-                Size = UDim2.new(0, 320, 0, 220),
-                Position = UDim2.fromScale(0.5, 0.5),
-                AnchorPoint = Vector2.new(0.5, 0.5),
-                BackgroundColor3 = ThemeTokens.Colors.ParchmentIvory,
-                BorderSizePixel = 0,
-            }, {
-                Corner = React.createElement("UICorner", {
-                    CornerRadius = ThemeTokens.Radii.Modal,
-                }),
-                Stroke = React.createElement("UIStroke", {
-                    Color = ThemeTokens.Colors.CedarUmber,
-                    Thickness = 4,
-                }),
-                Title = React.createElement("TextLabel", {
-                    Size = UDim2.new(1, 0, 0, 48),
+                    Size = UDim2.new(1, 0, 0, 44),
                     Position = UDim2.new(0.5, 0, 0, 16),
                     AnchorPoint = Vector2.new(0.5, 0),
                     BackgroundTransparency = 1,
@@ -492,8 +599,8 @@ local function PuzzleScreen(props: PuzzleScreenProps)
                     TextColor3 = ThemeTokens.Colors.BerryCrimson,
                 }),
                 Desc = React.createElement("TextLabel", {
-                    Size = UDim2.new(1, -32, 0, 36),
-                    Position = UDim2.new(0.5, 0, 0, 68),
+                    Size = UDim2.new(1, -32, 0, 32),
+                    Position = UDim2.new(0.5, 0, 0, 60),
                     AnchorPoint = Vector2.new(0.5, 0),
                     BackgroundTransparency = 1,
                     Text = "Don't worry! Try again to earn your garden star.",
@@ -502,24 +609,51 @@ local function PuzzleScreen(props: PuzzleScreenProps)
                     TextColor3 = ThemeTokens.Colors.CedarUmber,
                     TextWrapped = true,
                 }),
-                RetryButton = React.createElement("TextButton", {
-                    Size = UDim2.new(0, 160, 0, 46),
-                    Position = UDim2.new(0.5, 0, 1, -24),
+                
+                -- Actions: Retry & Return to Map
+                DefeatActions = React.createElement("Frame", {
+                    Size = UDim2.new(1, -32, 0, 96),
+                    Position = UDim2.new(0.5, 0, 1, -16),
                     AnchorPoint = Vector2.new(0.5, 1),
-                    BackgroundColor3 = ThemeTokens.Colors.SproutLime,
-                    Text = "RETRY",
-                    Font = ThemeTokens.Typography.ButtonLabel.Font,
-                    TextSize = 16,
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    AutoButtonColor = true,
-                    [React.Event.Activated] = handleRestart,
+                    BackgroundTransparency = 1,
                 }, {
-                    Corner = React.createElement("UICorner", {
-                        CornerRadius = ThemeTokens.Radii.Pill,
+                    Layout = React.createElement("UIListLayout", {
+                        FillDirection = Enum.FillDirection.Vertical,
+                        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                        VerticalAlignment = Enum.VerticalAlignment.Center,
+                        Padding = UDim.new(0, 8),
                     }),
-                    Stroke = React.createElement("UIStroke", {
-                        Color = ThemeTokens.Colors.BotanicalForest,
-                        Thickness = 2,
+                    RetryButton = React.createElement("TextButton", {
+                        Size = UDim2.new(1, 0, 0, 42),
+                        BackgroundColor3 = ThemeTokens.Colors.SproutLime,
+                        Text = "RETRY",
+                        Font = ThemeTokens.Typography.ButtonLabel.Font,
+                        TextSize = 15,
+                        TextColor3 = Color3.fromRGB(255, 255, 255),
+                        AutoButtonColor = true,
+                        [React.Event.Activated] = handleRestart,
+                    }, {
+                        Corner = React.createElement("UICorner", { CornerRadius = ThemeTokens.Radii.Pill }),
+                        Stroke = React.createElement("UIStroke", { Color = ThemeTokens.Colors.BotanicalForest, Thickness = 1.5 }),
+                    }),
+                    ReturnMapButton = React.createElement("TextButton", {
+                        Size = UDim2.new(1, 0, 0, 36),
+                        BackgroundColor3 = ThemeTokens.Colors.RiverStone,
+                        Text = "RETURN TO MAP",
+                        Font = ThemeTokens.Typography.ButtonLabel.Font,
+                        TextSize = 13,
+                        TextColor3 = ThemeTokens.Colors.CedarUmber,
+                        AutoButtonColor = true,
+                        [React.Event.Activated] = function()
+                            if props.onReturnToMap then
+                                props.onReturnToMap()
+                            else
+                                handleRestart()
+                            end
+                        end,
+                    }, {
+                        Corner = React.createElement("UICorner", { CornerRadius = ThemeTokens.Radii.Pill }),
+                        Stroke = React.createElement("UIStroke", { Color = ThemeTokens.Colors.CedarUmber, Thickness = 1.5 }),
                     }),
                 }),
             }),

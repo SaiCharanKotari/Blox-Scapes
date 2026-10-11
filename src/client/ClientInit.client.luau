@@ -10,6 +10,10 @@ local React = require(Packages:WaitForChild("React"))
 local ReactRoblox = require(Packages:WaitForChild("ReactRoblox"))
 
 local App = require(script.Parent:WaitForChild("UI"):WaitForChild("App"))
+local GardenSceneManager = require(script.Parent:WaitForChild("Controllers"):WaitForChild("GardenSceneManager"))
+
+-- Ensure prototype Courtyard Garden scene exists in Workspace
+GardenSceneManager.ensureScene()
 
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
