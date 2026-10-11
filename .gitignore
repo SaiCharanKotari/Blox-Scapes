@@ -1,0 +1,34 @@
+# Roblox / Wally packages (installed via `wally install`)
+Packages/
+ServerPackages/
+DevPackages/
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python cache & temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Roblox place files & Rojo builds
+*.rbxl
+*.rbxlx
+.sourcemap.json
+*.build.json
+
+# Toolchain managers & logs
+.aftman/
+*.log
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

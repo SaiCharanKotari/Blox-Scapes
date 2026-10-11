@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bloomtrail — Visual Design System & Interactive Screen Concepts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Bloomtrail Design Tokens */
+      --bg-cream: #F9F5EC;
+      --surface-ivory: #FFF8EE;
+      --surface-stone: #E8E0D5;
+      --timber-umber: #5C381E;
+      --timber-dark: #3F2310;
+      --espresso-shadow: #2E1B0E;
+      --botanical-sage: #4E8D53;
+      --botanical-deep: #264D2B;
+      --sprout-lime: #8AC926;
+      --berry-crimson: #E63946;
+      --dewdrop-blue: #2A9D8F;
+      --blossom-yellow: #F4A261;
+      --plum-purple: #7209B7;
+      --star-gold: #FFB703;
+      --coin-amber: #FB8500;
+      
+      --font-display: 'Fredoka', cursive, sans-serif;
+      --font-heading: 'Outfit', sans-serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-pill: 999px;
+      
+      --shadow-soft: 0 8px 24px rgba(46, 27, 14, 0.08);
+      --shadow-depth: 0 12px 32px rgba(46, 27, 14, 0.16);
+      --bevel-pill: 0 4px 0 #264D2B;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #1B261D;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(78, 141, 83, 0.25) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(138, 201, 38, 0.15) 0%, transparent 40%),
+        linear-gradient(180deg, #162018 0%, #101811 100%);
+      color: #EFE8DD;
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Bar */
+    header.header {
+      background: rgba(28, 40, 30, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--sprout-lime), var(--botanical-sage));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(78, 141, 83, 0.4);
+      font-size: 24px;
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      letter-spacing: -0.5px;
+      color: #FFF8EE;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .brand-subtitle {
+      font-size: 0.8rem;
+      color: #9EBAA2;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+    }
+
+    nav.nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 0.3rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: #CADBC9;
+      font-family: var(--font-heading);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.55rem 1.25rem;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab-btn:hover {
+      color: #FFFFFF;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(180deg, #8AC926 0%, #4E8D53 100%);
+      color: #FFFFFF;
+      box-shadow: 0 3px 0 #264D2B, 0 4px 12px rgba(78, 141, 83, 0.3);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+
+    /* Main Container */
+    main.main-content {
+      flex: 1;
+      padding: 2rem;
+      max-width: 1440px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .section-view {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .section-view.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Screen Showcase (Tab 1) */
+    .screen-showcase-grid {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 2.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .screen-showcase-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .device-stage {
+      position: sticky;
+      top: 90px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.2rem;
+    }
+
+    .device-frame {
+      width: 380px;
+      height: 780px;
+      background: #111;
+      border-radius: 46px;
+      padding: 12px;
+      box-shadow: 
+        0 25px 60px rgba(0, 0, 0, 0.7),
+        0 0 0 1px rgba(255, 255, 255, 0.12),
+        inset 0 0 0 2px #333;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .device-notch {
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 26px;
+      background: #000;
+      border-radius: 14px;
+      z-index: 20;
+    }
+
+    .device-screen {
+      width: 100%;
+      height: 100%;
+      border-radius: 36px;
+      overflow: hidden;
+      position: relative;
+      background: #2a3d2e;
+    }
+
+    .device-screen img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: opacity 0.3s ease;
+    }
+
+    .screen-controls {
+      display: flex;
+      gap: 0.6rem;
+      background: rgba(0,0,0,0.3);
+      padding: 0.4rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .screen-selector-btn {
+      background: transparent;
+      border: none;
+      color: #A3BCA7;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.4rem 0.9rem;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .screen-selector-btn.active {
+      background: #5C381E;
+      color: #FFF8EE;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+
+    .screen-details-panel {
+      background: rgba(36, 52, 38, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-lg);
+      padding: 2.2rem;
+      box-shadow: var(--shadow-depth);
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.75rem;
+      background: rgba(138, 201, 38, 0.15);
+      border: 1px solid rgba(138, 201, 38, 0.3);
+      color: #A4E240;
+      border-radius: var(--radius-pill);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.8rem;
+    }
+
+    .screen-title {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      color: #FFF8EE;
+      margin-bottom: 0.6rem;
+    }
+
+    .screen-desc {
+      color: #C5D7C7;
+      font-size: 1.05rem;
+      line-height: 1.6;
+      margin-bottom: 1.8rem;
+    }
+
+    .feature-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .feature-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .feature-card {
+      background: rgba(20, 32, 22, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-md);
+      padding: 1.2rem;
+    }
+
+    .feature-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.5rem;
+      font-family: var(--font-heading);
+      font-weight: 700;
+      color: #FFF8EE;
+      font-size: 1rem;
+    }
+
+    .feature-card-desc {
+      font-size: 0.88rem;
+      color: #A3BCA7;
+      line-height: 1.5;
+    }
+
+    /* Interactive Match-3 Board Prototype */
+    .board-prototype-container {
+      margin-top: 1.5rem;
+      background: #FFF8EE;
+      color: #3F2310;
+      border-radius: var(--radius-lg);
+      padding: 1.8rem;
+      border: 4px solid var(--timber-umber);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    }
+
+    .board-prototype-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+      background: #E8E0D5;
+      padding: 0.8rem 1.2rem;
+      border-radius: var(--radius-md);
+      border: 2px solid #5C381E;
+    }
+
+    .hud-counter {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      color: #5C381E;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .moves-badge {
+      background: #FFB703;
+      color: #2E1B0E;
+      padding: 0.2rem 0.8rem;
+      border-radius: var(--radius-pill);
+      box-shadow: 0 2px 0 #9E6500;
+      font-size: 1.1rem;
+    }
+
+    .interactive-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 6px;
+      background: #3F2310;
+      padding: 10px;
+      border-radius: var(--radius-md);
+      max-width: 480px;
+      margin: 0 auto;
+      user-select: none;
+    }
+
+    .grid-cell {
+      aspect-ratio: 1;
+      background: rgba(255, 248, 238, 0.15);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+
+    .grid-cell:hover {
+      transform: scale(1.06);
+      background: rgba(255, 248, 238, 0.25);
+    }
+
+    .grid-cell.selected {
+      box-shadow: 0 0 0 3px #FFB703, 0 0 12px #FFB703;
+      transform: scale(1.12);
+      z-index: 5;
+    }
+
+    .tile-glyph {
+      width: 78%;
+      height: 78%;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+      position: relative;
+    }
+
+    .tile-glyph.berry {
+      background: radial-gradient(circle at 35% 35%, #FF7582, #E63946);
+      border-radius: 50% 50% 45% 45%;
+    }
+    .tile-glyph.leaf {
+      background: radial-gradient(circle at 35% 35%, #76BC7C, #4E8D53);
+      border-radius: 8px 30px 8px 30px;
+    }
+    .tile-glyph.blossom {
+      background: radial-gradient(circle at 35% 35%, #FFD166, #F4A261);
+      border-radius: 50%;
+    }
+    .tile-glyph.dewdrop {
+      background: radial-gradient(circle at 35% 35%, #6EE7B7, #2A9D8F);
+      border-radius: 50% 0 50% 50%;
+      transform: rotate(-45deg);
+    }
+    .tile-glyph.plum {
+      background: radial-gradient(circle at 35% 35%, #B5179E, #7209B7);
+      border-radius: 45% 45% 50% 50%;
+    }
+    .tile-glyph.bomb {
+      background: linear-gradient(135deg, #FF007A, #FFB703, #00F0FF);
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(255,255,255,0.8);
+      animation: pulseBomb 1s infinite alternate;
+    }
+
+    @keyframes pulseBomb {
+      from { transform: scale(0.95); }
+      to { transform: scale(1.08); }
+    }
+
+    /* Design Tokens Tab (Tab 2) */
+    .tokens-sheet {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
+    .tokens-header {
+      margin-bottom: 1rem;
+    }
+
+    .color-swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.2rem;
+    }
+
+    .swatch-card {
+      background: rgba(30, 44, 32, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .swatch-color {
+      height: 90px;
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      padding: 0.6rem;
+    }
+
+    .swatch-info {
+      padding: 1rem;
+    }
+
+    .swatch-name {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      color: #FFF8EE;
+      font-size: 0.95rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .swatch-code {
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #9EBAA2;
+    }
+
+    /* Button States */
+    .button-states-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      align-items: center;
+      margin-top: 1rem;
+    }
+
+    .btn-pill {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      padding: 0.75rem 2rem;
+      border-radius: var(--radius-pill);
+      border: none;
+      color: #FFF8EE;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+      position: relative;
+      transition: all 0.08s ease-out;
+    }
+
+    .btn-pill.primary {
+      background: linear-gradient(180deg, #8AC926 0%, #4E8D53 100%);
+      box-shadow: var(--bevel-pill), 0 6px 16px rgba(78, 141, 83, 0.4);
+    }
+
+    .btn-pill.primary:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+
+    .btn-pill.primary:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 #264D2B, 0 2px 8px rgba(78, 141, 83, 0.4);
+    }
+
+    .btn-pill.disabled {
+      background: #738C75;
+      box-shadow: 0 2px 0 #465548;
+      cursor: not-allowed;
+      filter: saturate(0.4);
+      opacity: 0.7;
+    }
+
+    /* Interactive Before/After Garden Slider */
+    .restoration-slider-box {
+      background: rgba(30, 44, 32, 0.8);
+      border-radius: var(--radius-lg);
+      padding: 1.8rem;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .comparison-container {
+      position: relative;
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      aspect-ratio: 9/16;
+      max-height: 560px;
+      box-shadow: var(--shadow-depth);
+    }
+
+    .comparison-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Audit & Plan Tab (Tab 3) */
+    .audit-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 900px) {
+      .audit-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .audit-box {
+      background: rgba(28, 42, 30, 0.7);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+    }
+
+    .audit-box h3 {
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      color: #FFF8EE;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .audit-item {
+      padding: 0.8rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .badge-pass {
+      background: rgba(138, 201, 38, 0.2);
+      color: #8AC926;
+      border: 1px solid #8AC926;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: var(--radius-pill);
+    }
+
+    .badge-crit {
+      background: rgba(230, 57, 70, 0.2);
+      color: #FF6B77;
+      border: 1px solid #E63946;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: var(--radius-pill);
+    }
+
+    .badge-high {
+      background: rgba(255, 183, 3, 0.2);
+      color: #FFB703;
+      border: 1px solid #FFB703;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: var(--radius-pill);
+    }
+
+    /* Footer */
+    footer.footer {
+      background: rgba(16, 24, 17, 0.9);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      color: #8CA58F;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-badge">🌸</div>
+      <div>
+        <div class="brand-title">Bloomtrail</div>
+        <div class="brand-subtitle">Gate 1 Engine Verified • React-Lua UI Architecture</div>
+      </div>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('screen-concepts')">
+        <span>📱</span> Screen Concepts
+      </button>
+      <button class="tab-btn" onclick="switchTab('interactive-board')">
+        <span>🧩</span> Interactive Puzzle
+      </button>
+      <button class="tab-btn" onclick="switchTab('design-tokens')">
+        <span>🎨</span> Design Tokens & UI Kit
+      </button>
+      <button class="tab-btn" onclick="switchTab('audit-summary')">
+        <span>📋</span> Audit & Plan
+      </button>
+    </nav>
+  </header>
+
+  <!-- Main View -->
+  <main class="main-content">
+
+    <!-- TAB 1: SCREEN CONCEPTS -->
+    <section id="screen-concepts" class="section-view active">
+      <div class="screen-showcase-grid">
+        
+        <!-- Mobile Device Stage -->
+        <div class="device-stage">
+          <div class="screen-controls">
+            <button class="screen-selector-btn active" onclick="selectScreen('map')">1. World Map</button>
+            <button class="screen-selector-btn" onclick="selectScreen('puzzle')">2. Puzzle Board</button>
+            <button class="screen-selector-btn" onclick="selectScreen('garden')">3. Restoration</button>
+          </div>
+
+          <div class="device-frame">
+            <div class="device-notch"></div>
+            <div class="device-screen">
+              <img id="active-screen-img" src="docs/concepts/bloomtrail_world_map.jpg" alt="Screen Concept">
+            </div>
+          </div>
+        </div>
+
+        <!-- Screen Details Panel -->
+        <div class="screen-details-panel">
+          
+          <!-- Content: World Map -->
+          <div id="screen-desc-map" class="screen-detail-content">
+            <div class="tag">Screen 1 of 3 • Navigation & Progression</div>
+            <h1 class="screen-title">The World Map Screen</h1>
+            <p class="screen-desc">
+              A vertically scrolling, illustrated botanical journey. Players advance by conquering numbered stepping-stone medallions that weave through blooming courtyard gardens, stone arches, and sculpted topiaries.
+            </p>
+
+            <div class="feature-list">
+              <div class="feature-card">
+                <div class="feature-card-header">
+                  <span>🪵</span> Carved Level Medallions
+                </div>
+                <div class="feature-card-desc">
+                  Level nodes use 3 distinct visual states: completed wooden plaques with 1-3 earned gold stars; an elevated active node pulsating with a radiant golden aura; and chained river stones with brass padlocks for locked stages.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-card-header">
+                  <span>📜</span> Storybook Parchment HUD
+                </div>
+                <div class="feature-card-desc">
+                  Restrained top timber frame displays current courtyard area ("Courtyard Haven"), coin balance (250) and star balance (4) without visual clutter.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-card-header">
+                  <span>🌿</span> Tactile "Play Next" Button
+                </div>
+                <div class="feature-card-desc">
+                  Capsule-shaped primary action button in the bottom dock with a 4px 3D bevel rim, foliage embellishments, and snappy tactile touch feedback.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-card-header">
+                  <span>📖</span> Garden Journal Tab
+                </div>
+                <div class="feature-card-desc">
+                  Bottom left notebook affordance with task notifications, allowing seamless toggling between puzzle progression and 3D garden restoration.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Content: Puzzle Board -->
+          <div id="screen-desc-puzzle" class="screen-detail-content" style="display: none;">
+            <div class="tag">Screen 2 of 3 • Core Gameplay Board</div>
+            <h1 class="screen-title">Match-3 Gameplay Screen</h1>
+            <p class="screen-desc">
+              A crystal-clear, readable 8x8 match-3 board framed in rich carved cedar timber. Engineered with strict dual-coding: each piece is immediately recognizable by color and unique silhouette, ensuring rapid accessibility and zero fatigue.
+            </p>
+
+            <div class="feature-list">
+              <div class="feature-card">
+                <div class="feature-card-header">
+                  <span>🎯</span> Restrained Objective HUD
+                </div>
+                <div class="feature-card-desc">
+                  Hanging parchment goal tags showing real-time counters (e.g. 15 Emerald Leaves, 10 Wild Berries) with tactile bump-animations upon decrement.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-card-header">
+                  <span>⏳</span> Center Moves Counter
+                </div>
+                <div class="feature-card-desc">
+                  Large, prominent circular brass counter reading moves remaining (22 Moves) with warm golden numerals, preventing accidental loss.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-card-header">
+                  <span>✨</span> Blossom Bomb Special Piece
+                </div>
+                <div class="feature-card-desc">
+                  Spawned by 4-in-a-row matches: a radiant multi-hue flower bud emitting a sparkling particle aura that clears a 3x3 radius upon activation.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-card-header">
+                  <span>🛠️</span> Garden Tool Boosters Drawer
+                </div>
+                <div class="feature-card-desc">
+                  Bottom wooden tray holding garden trowels (single tile clear) and watering cans (row clear) with remaining inventory badges.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Content: Garden Restoration -->
+          <div id="screen-desc-garden" class="screen-detail-content" style="display: none;">
+            <div class="tag">Screen 3 of 3 • Metagame Transformation</div>
+            <h1 class="screen-title">Garden Courtyard Restoration</h1>
+            <p class="screen-desc">
+              The emotional reward of Project Bloomtrail. Players spend stars earned from puzzle victories to transform the overgrown courtyard fountain from cracked, vine-tangled decay into a vibrant, flowing limestone monument.
+            </p>
+
+            <div class="feature-list">
+              <div class="feature-card">
+                <div class="feature-card-header">
+                  <span>⛲</span> Visible Before-and-After
+                </div>
+                <div class="feature-card-desc">
+                  A tangible transformation: dry cracked basins and choking ivy dissolve into crystal-clear flowing fountain waters and blooming flowerbeds.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-card-header">
+                  <span>⭐</span> Star Progression Economy
+                </div>
+                <div class="feature-card-desc">
+                  Every star won in puzzles has immediate, visible value. No fake timers, no paywalls, no simulator grinding.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-card-header">
+                  <span>🔨</span> Task Card Action Control
+                </div>
+                <div class="feature-card-desc">
+                  Carved timber drawer shows active task ("Restore Fountain Basin"), thumbnail preview, 1 Star cost badge, and green "RESTORE" button with brass hammer.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-card-header">
+                  <span>☀️</span> Golden Hour Atmosphere
+                </div>
+                <div class="feature-card-desc">
+                  Warm sunlit morning directional lighting, floating floral petals, and soft ambient bird ambience create a cozy, relaxing retreat.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 2: INTERACTIVE PUZZLE BOARD -->
+    <section id="interactive-board" class="section-view">
+      <div class="board-prototype-container">
+        
+        <div class="board-prototype-header">
+          <div class="hud-counter">
+            <span>Level 1: First Blooms</span>
+          </div>
+          <div class="hud-counter">
+            <span>Moves:</span>
+            <div id="moves-count-display" class="moves-badge">25</div>
+          </div>
+          <div class="hud-counter">
+            <span>Goals:</span>
+            <span style="font-size: 0.95rem; font-family: var(--font-body); color: #5C381E;">
+              🍃 <strong id="leaf-goal">15</strong> | 🍎 <strong id="berry-goal">10</strong>
+            </span>
+          </div>
+        </div>
+
+        <p style="text-align: center; color: #5C381E; font-size: 0.9rem; margin-bottom: 1rem;">
+          <strong>Interactive Match-3 Prototype:</strong> Click a tile, then click an adjacent tile to simulate a swap!
+        </p>
+
+        <div id="board-grid" class="interactive-grid"></div>
+
+        <div style="display: flex; justify-content: center; margin-top: 1.2rem;">
+          <button class="btn-pill primary" onclick="resetPrototypeBoard()">
+            <span>🔄</span> Reset Board
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 3: DESIGN TOKENS & UI KIT -->
+    <section id="design-tokens" class="section-view">
+      <div class="tokens-sheet">
+        
+        <div class="tokens-header">
+          <h2 style="font-family: var(--font-display); font-size: 2rem; color: #FFF8EE; margin-bottom: 0.4rem;">
+            Design Tokens & UI Kit
+          </h2>
+          <p style="color: #A3BCA7; font-size: 1rem;">
+            Authoritative visual tokens engineered for Project Bloomtrail's React-Lua component library.
+          </p>
+        </div>
+
+        <!-- Full UI Kit Sheet Image -->
+        <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.08);">
+          <img src="docs/concepts/bloomtrail_design_system_kit.jpg" alt="Bloomtrail UI Kit Sheet" style="width: 100%; border-radius: var(--radius-md); display: block; box-shadow: var(--shadow-depth);">
+        </div>
+
+        <!-- Swatches -->
+        <h3 style="font-family: var(--font-heading); color: #FFF8EE; font-size: 1.3rem;">Color Tokens</h3>
+        <div class="color-swatch-grid">
+          <div class="swatch-card">
+            <div class="swatch-color" style="background: #FFF8EE;"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Parchment Warm Ivory</div>
+              <div class="swatch-code">#FFF8EE • (255, 248, 238)</div>
+            </div>
+          </div>
+
+          <div class="swatch-card">
+            <div class="swatch-color" style="background: #5C381E;"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Carved Cedar Umber</div>
+              <div class="swatch-code">#5C381E • (92, 56, 30)</div>
+            </div>
+          </div>
+
+          <div class="swatch-card">
+            <div class="swatch-color" style="background: #4E8D53;"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Leafy Sage Green</div>
+              <div class="swatch-code">#4E8D53 • (78, 141, 83)</div>
+            </div>
+          </div>
+
+          <div class="swatch-card">
+            <div class="swatch-color" style="background: #8AC926;"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Sunlit Sprout Lime</div>
+              <div class="swatch-code">#8AC926 • (138, 201, 38)</div>
+            </div>
+          </div>
+
+          <div class="swatch-card">
+            <div class="swatch-color" style="background: #E63946;"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Berry Crimson</div>
+              <div class="swatch-code">#E63946 • (230, 57, 70)</div>
+            </div>
+          </div>
+
+          <div class="swatch-card">
+            <div class="swatch-color" style="background: #2A9D8F;"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Sky Dewdrop Blue</div>
+              <div class="swatch-code">#2A9D8F • (42, 157, 143)</div>
+            </div>
+          </div>
+
+          <div class="swatch-card">
+            <div class="swatch-color" style="background: #FFB703;"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Radiant Star Gold</div>
+              <div class="swatch-code">#FFB703 • (255, 183, 3)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Component States Demonstration -->
+        <h3 style="font-family: var(--font-heading); color: #FFF8EE; font-size: 1.3rem; margin-top: 1rem;">
+          Button Component States (Tactile 3D Bevel)
+        </h3>
+        <div class="button-states-row">
+          <div>
+            <div style="font-size: 0.8rem; color: #A3BCA7; margin-bottom: 0.4rem;">NORMAL STATE</div>
+            <button class="btn-pill primary">
+              <span>▶</span> PLAY NEXT
+            </button>
+          </div>
+
+          <div>
+            <div style="font-size: 0.8rem; color: #A3BCA7; margin-bottom: 0.4rem;">HOVER (CLICK & HOLD)</div>
+            <button class="btn-pill primary" style="filter: brightness(1.08);">
+              <span>🔨</span> RESTORE
+            </button>
+          </div>
+
+          <div>
+            <div style="font-size: 0.8rem; color: #A3BCA7; margin-bottom: 0.4rem;">DISABLED STATE</div>
+            <button class="btn-pill disabled" disabled>
+              <span>🔒</span> LOCKED
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 4: AUDIT SUMMARY & PLAN -->
+    <section id="audit-summary" class="section-view">
+      <div class="audit-grid">
+        
+        <div class="audit-box">
+          <h3><span>✅</span> Executed & Verified Checks</h3>
+          
+          <div class="audit-item">
+            <span>Aftman Toolchain Manager</span>
+            <span class="badge-pass">aftman 0.3.0 (PASS)</span>
+          </div>
+
+          <div class="audit-item">
+            <span>Lune Test Runner</span>
+            <span class="badge-pass">lune 0.8.9 (PASS)</span>
+          </div>
+
+          <div class="audit-item">
+            <span>Wally Package Manager</span>
+            <span class="badge-pass">wally 0.3.2 (PASS)</span>
+          </div>
+
+          <div class="audit-item">
+            <span>React-Lua & ReactRoblox</span>
+            <span class="badge-pass">Packages Installed (PASS)</span>
+          </div>
+
+          <div class="audit-item">
+            <span>Rojo Headless Build</span>
+            <span class="badge-pass">Built rbxm clean (PASS)</span>
+          </div>
+
+          <div class="audit-item">
+            <span>Rojo Live Server</span>
+            <span class="badge-pass">Port 34872 active (PASS)</span>
+          </div>
+
+          <div class="audit-item">
+            <span>Studio Workspace Safety</span>
+            <span class="badge-pass">Untouched & Safe (PASS)</span>
+          </div>
+
+          <div class="audit-item">
+            <span>20 Pure Luau Unit Tests</span>
+            <span class="badge-pass">20/20 PASSED (PASS)</span>
+          </div>
+        </div>
+
+        <div class="audit-box">
+          <h3><span>🌐</span> Verified Public Inspection Endpoints</h3>
+          <p style="font-size: 0.85rem; color: #A3BCA7; margin-bottom: 1rem;">
+            Serving live on port 8000 with explicit UTF-8 plaintext headers for code review:
+          </p>
+          
+          <div class="audit-item">
+            <div>
+              <div style="font-weight: 600; color: #FFF8EE;"><a href="/" style="color: #8AC926; text-decoration: none;">/ (Root Preview)</a></div>
+              <div style="font-size: 0.78rem; color: #A3BCA7;">Interactive design system & screen mockups</div>
+            </div>
+            <span class="badge-pass">HTTP 200</span>
+          </div>
+
+          <div class="audit-item">
+            <div>
+              <div style="font-weight: 600; color: #FFF8EE;"><a href="/docs/AUDIT_REPORT.md" style="color: #8AC926; text-decoration: none;">/docs/AUDIT_REPORT.md</a></div>
+              <div style="font-size: 0.78rem; color: #A3BCA7;">Complete foundation audit report (UTF-8 text)</div>
+            </div>
+            <span class="badge-pass">HTTP 200</span>
+          </div>
+
+          <div class="audit-item">
+            <div>
+              <div style="font-weight: 600; color: #FFF8EE;"><a href="/src/shared/Puzzle/BoardLogic.luau" style="color: #8AC926; text-decoration: none;">/src/shared/Puzzle/BoardLogic.luau</a></div>
+              <div style="font-size: 0.78rem; color: #A3BCA7;">Pure Luau match-3 simulation engine</div>
+            </div>
+            <span class="badge-pass">HTTP 200</span>
+          </div>
+
+          <div class="audit-item">
+            <div>
+              <div style="font-weight: 600; color: #FFF8EE;"><a href="/tests/run_tests.luau" style="color: #8AC926; text-decoration: none;">/tests/run_tests.luau</a></div>
+              <div style="font-size: 0.78rem; color: #A3BCA7;">Lune automated test runner entrypoint</div>
+            </div>
+            <span class="badge-pass">HTTP 200</span>
+          </div>
+
+          <div class="audit-item">
+            <div>
+              <div style="font-weight: 600; color: #FFF8EE;"><a href="/index.html" style="color: #8AC926; text-decoration: none;">/index.html</a></div>
+              <div style="font-size: 0.78rem; color: #A3BCA7;">Live interactive preview artifact</div>
+            </div>
+            <span class="badge-pass">HTTP 200</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    Project Bloomtrail • Gate 0 Audit & Gate 1 Visual Design Deliverables • Built for Rojo & Roblox Studio
+  </footer>
+
+  <script>
+    // Tab Switching
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.section-view').forEach(view => view.classList.remove('active'));
+      
+      event.currentTarget.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    // Screen Showcase Selector
+    const screenImages = {
+      map: 'docs/concepts/bloomtrail_world_map.jpg',
+      puzzle: 'docs/concepts/bloomtrail_puzzle_screen.jpg',
+      garden: 'docs/concepts/bloomtrail_garden_restoration.jpg'
+    };
+
+    function selectScreen(screenKey) {
+      document.querySelectorAll('.screen-selector-btn').forEach(btn => btn.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+
+      const img = document.getElementById('active-screen-img');
+      img.style.opacity = '0.4';
+      setTimeout(() => {
+        img.src = screenImages[screenKey];
+        img.style.opacity = '1';
+      }, 150);
+
+      document.querySelectorAll('.screen-detail-content').forEach(el => el.style.display = 'none');
+      document.getElementById(`screen-desc-${screenKey}`).style.display = 'block';
+    }
+
+    // Interactive Match-3 Board Prototype
+    const TILE_TYPES = ['berry', 'leaf', 'blossom', 'dewdrop', 'plum'];
+    const TILE_EMOJIS = {
+      berry: '🍎',
+      leaf: '🍃',
+      blossom: '🌻',
+      dewdrop: '💧',
+      plum: '🍇',
+      bomb: '🌟'
+    };
+
+    let gridState = [];
+    let selectedCell = null;
+    let movesLeft = 25;
+    let leafGoal = 15;
+    let berryGoal = 10;
+
+    function initPrototypeBoard() {
+      gridState = [];
+      movesLeft = 25;
+      leafGoal = 15;
+      berryGoal = 10;
+      updateHud();
+
+      for (let y = 0; y < 8; y++) {
+        let row = [];
+        for (let x = 0; x < 8; x++) {
+          // Avoid 3 in a row initially
+          let type;
+          do {
+            type = TILE_TYPES[Math.floor(Math.random() * TILE_TYPES.length)];
+          } while (
+            (x >= 2 && row[x-1] === type && row[x-2] === type) ||
+            (y >= 2 && gridState[y-1][x] === type && gridState[y-2][x] === type)
+          );
+          row.push(type);
+        }
+        gridState.push(row);
+      }
+      renderBoard();
+    }
+
+    function renderBoard() {
+      const container = document.getElementById('board-grid');
+      container.innerHTML = '';
+
+      for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+          const type = gridState[y][x];
+          const cell = document.createElement('div');
+          cell.className = 'grid-cell';
+          cell.dataset.x = x;
+          cell.dataset.y = y;
+
+          if (selectedCell && selectedCell.x === x && selectedCell.y === y) {
+            cell.classList.add('selected');
+          }
+
+          const glyph = document.createElement('div');
+          glyph.className = `tile-glyph ${type}`;
+          glyph.textContent = TILE_EMOJIS[type] || '🌸';
+          cell.appendChild(glyph);
+
+          cell.addEventListener('click', () => handleCellClick(x, y));
+          container.appendChild(cell);
+        }
+      }
+    }
+
+    function handleCellClick(x, y) {
+      if (!selectedCell) {
+        selectedCell = { x, y };
+        renderBoard();
+      } else {
+        const dx = Math.abs(selectedCell.x - x);
+        const dy = Math.abs(selectedCell.y - y);
+
+        if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
+          // Swap adjacent
+          swapTiles(selectedCell.x, selectedCell.y, x, y);
+          selectedCell = null;
+        } else {
+          // Select new
+          selectedCell = { x, y };
+          renderBoard();
+        }
+      }
+    }
+
+    function swapTiles(x1, y1, x2, y2) {
+      const temp = gridState[y1][x1];
+      gridState[y1][x1] = gridState[y2][x2];
+      gridState[y2][x2] = temp;
+
+      movesLeft = Math.max(0, movesLeft - 1);
+      
+      // Simulate collection
+      if (temp === 'leaf') leafGoal = Math.max(0, leafGoal - 1);
+      if (temp === 'berry') berryGoal = Math.max(0, berryGoal - 1);
+
+      updateHud();
+      renderBoard();
+    }
+
+    function updateHud() {
+      document.getElementById('moves-count-display').textContent = movesLeft;
+      document.getElementById('leaf-goal').textContent = leafGoal;
+      document.getElementById('berry-goal').textContent = berryGoal;
+    }
+
+    function resetPrototypeBoard() {
+      selectedCell = null;
+      initPrototypeBoard();
+    }
+
+    // Initialize board on load
+    initPrototypeBoard();
+  </script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "Bloomtrail",
+  "globIgnorePaths": ["**/*.md", "**/*.jsonc", "**/scratch/**"],
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "BloomtrailShared": {
+        "$path": "src/shared"
+      },
+      "Packages": {
+        "$path": "Packages"
+      }
+    },
+    "ServerScriptService": {
+      "BloomtrailServer": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "BloomtrailClient": {
+          "$path": "src/client"
+        }
+      }
+    }
+  }
+}
