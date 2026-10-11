@@ -406,6 +406,85 @@ function Tests.TEST_20_T_SHAPED_INTERSECTION_AND_BLOSSOM_BOMB()
     assertEqual(matches[1].spawnCoord.y, 4, "Spawn coordinate Y must be intersection point 4")
 end
 
+-- TEST 21: SWAP VALIDATION INVARIANCE (Zero side effects on board or moves)
+function Tests.TEST_21_SWAP_VALIDATION_INVARIANCE()
+    local levelDef = createTestLevelDef()
+    local session = BoardLogic.createSession(levelDef, 777)
+    local initialMoves = session.movesRemaining
+    local initialTileA = BoardCoord.getTile(session.grid, 1, 1)
+    local initialTileB = BoardCoord.getTile(session.grid, 2, 1)
+    local initialIdA = initialTileA and initialTileA.id
+    local initialIdB = initialTileB and initialTileB.id
+
+    -- Validate valid or invalid swap
+    local c1 = BoardCoord.create(1, 1)
+    local c2 = BoardCoord.create(2, 1)
+    local _ = BoardLogic.validateSwap(session, c1, c2)
+
+    assertEqual(session.movesRemaining, initialMoves, "validateSwap must never mutate movesRemaining")
+    local postTileA = BoardCoord.getTile(session.grid, 1, 1)
+    local postTileB = BoardCoord.getTile(session.grid, 2, 1)
+    assertEqual(postTileA and postTileA.id, initialIdA, "Tile at (1, 1) must be preserved")
+    assertEqual(postTileB and postTileB.id, initialIdB, "Tile at (2, 1) must be preserved")
+end
+
+-- TEST 22: OBJECTIVE INCREMENTAL PROGRESSION AND VICTORY TIMING
+function Tests.TEST_22_OBJECTIVE_INCREMENTAL_PROGRESSION()
+    local levelDef: LevelDefinition = {
+        id = 99,
+        title = "Objective Test",
+        width = 8,
+        height = 8,
+        moveLimit = 5,
+        allowedColors = { "Berry", "Leaf", "Blossom", "Dewdrop" },
+        objectives = {
+            { kind = "collect_color", color = "Leaf", targetCount = 3 },
+        },
+        starThresholds = { 100, 200, 300 },
+        coinReward = 10,
+        starReward = 1,
+    }
+    local session = BoardLogic.createSession(levelDef, 888)
+    assertEqual(session.objectives[1].currentCount, 0, "Objective must start at 0")
+    assertEqual(session.objectives[1].completed, false, "Objective must not start completed")
+
+    -- Set up 3 Leaf match on row 5: (3, 5), (4, 5) Leaf, (6, 5) Leaf with (5, 5) Berry
+    BoardCoord.setTile(session.grid, 3, 5, { id = "l1", color = "Leaf" })
+    BoardCoord.setTile(session.grid, 4, 5, { id = "l2", color = "Leaf" })
+    BoardCoord.setTile(session.grid, 5, 5, { id = "b1", color = "Berry" })
+    BoardCoord.setTile(session.grid, 6, 5, { id = "l3", color = "Leaf" })
+
+    -- Swap (5, 5) with (6, 5) to form 3-in-a-row Leaf: (3, 5), (4, 5), (5, 5)
+    local result = BoardLogic.executeSwap(session, BoardCoord.create(5, 5), BoardCoord.create(6, 5))
+    assertTrue(result.valid, "Swap must be valid")
+    assertEqual(session.movesRemaining, 4, "Swap must consume exactly 1 move")
+    assertTrue(session.objectives[1].currentCount >= 3, "Leaf collection must reach or exceed 3")
+    assertTrue(session.objectives[1].completed, "Objective must be marked completed")
+    assertEqual(session.status, "Won", "Status must be Won once all objectives are completed")
+end
+
+-- TEST 23: RETRY SESSION RESET PURITY
+function Tests.TEST_23_RETRY_SESSION_RESET_PURITY()
+    local levelDef = createTestLevelDef()
+    local session = BoardLogic.createSession(levelDef, 999)
+
+    -- Force session to Won or Lost state
+    session.movesRemaining = 0
+    session.status = "Lost"
+    session.objectives[1].currentCount = 4
+    session.objectives[1].completed = false
+
+    -- Create fresh retry session
+    local retrySession = BoardLogic.createSession(levelDef, 1000)
+    assertEqual(retrySession.movesRemaining, levelDef.moveLimit, "Retry session moves must reset to limit")
+    assertEqual(retrySession.status, "InProgress", "Retry session status must be InProgress")
+    for _, obj in ipairs(retrySession.objectives) do
+        assertEqual(obj.currentCount, 0, "Retry objective counts must reset to 0")
+        assertFalse(obj.completed, "Retry objectives must not be completed")
+    end
+end
+
+
 -- Export test runner
 function Tests.runAll(): { total: number, passed: number, failed: number, results: { [string]: boolean } }
     local total = 0

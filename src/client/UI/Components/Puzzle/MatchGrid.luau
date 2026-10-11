@@ -1,6 +1,6 @@
 --!strict
--- MatchGrid.luau: Declarative React-Lua 8x8 match-3 board frame and tile layout container
--- Sourced directly from docs/ART_BIBLE.md cedar wood and parchment framing specs
+-- MatchGrid.luau: Declarative 8x8 carved cedar wood board with dual-layer slot and tile architecture
+-- Completely replaces UIGridLayout with explicit coordinate slots and controlled animation layers
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Packages = ReplicatedStorage:WaitForChild("Packages")
@@ -14,50 +14,90 @@ local ThemeTokens = require(BloomtrailShared:WaitForChild("Config"):WaitForChild
 local TileView = require(script.Parent.TileView)
 
 type Coord = BoardTypes.Coord
-type Grid = BoardTypes.Grid
+type Tile = BoardTypes.Tile
+
+export type DisplayTile = {
+    id: string,
+    coord: Coord,
+    tile: Tile,
+}
 
 export type MatchGridProps = {
-    grid: Grid,
     width: number,
     height: number,
+    displayTiles: { [string]: DisplayTile },
     selectedCoord: Coord?,
+    effectsOverlayRef: any,
+    registerTileRef: (id: string, rbx: GuiObject?) -> (),
     onTileClicked: (coord: Coord) -> (),
 }
 
 local function MatchGrid(props: MatchGridProps)
     local width = props.width
     local height = props.height
-    local grid = props.grid
+    local displayTiles = props.displayTiles
     local selectedCoord = props.selectedCoord
 
-    local children: { [string]: any } = {}
-
-    -- Grid layout for 8x8 squares
-    children["UIGridLayout"] = React.createElement("UIGridLayout", {
-        CellSize = UDim2.new(1 / width, -4, 1 / height, -4),
-        CellPadding = UDim2.fromOffset(4, 4),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        HorizontalAlignment = Enum.HorizontalAlignment.Center,
-        VerticalAlignment = Enum.VerticalAlignment.Center,
-    })
-
-    -- Populate all cells
-    local order = 0
+    -- 1. Static 8x8 Background Sockets and Hit Detectors
+    local slotChildren: { [string]: any } = {}
     for y = 1, height do
         for x = 1, width do
-            order += 1
             local coord = BoardCoord.create(x, y)
-            local tile = BoardCoord.getTile(grid, x, y)
             local isSelected = selectedCoord ~= nil and BoardCoord.equals(selectedCoord, coord)
 
-            children[string.format("Tile_%d_%d", x, y)] = React.createElement(TileView, {
-                coord = coord,
-                tile = tile,
-                isSelected = isSelected,
-                layoutOrder = order,
-                onTileClicked = props.onTileClicked,
+            slotChildren[string.format("Slot_%d_%d", x, y)] = React.createElement("Frame", {
+                Size = UDim2.new(1 / width, 0, 1 / height, 0),
+                Position = UDim2.new((x - 1) / width, 0, (y - 1) / height, 0),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+            }, {
+                SocketBevel = React.createElement("Frame", {
+                    Size = UDim2.new(1, -4, 1, -4),
+                    Position = UDim2.fromScale(0.5, 0.5),
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    BackgroundColor3 = if isSelected then Color3.fromRGB(68, 48, 28) else Color3.fromRGB(36, 21, 11),
+                    BorderSizePixel = 0,
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = UDim.new(0, 8),
+                    }),
+                    SocketStroke = isSelected and React.createElement("UIStroke", {
+                        Color = ThemeTokens.Colors.StarGold,
+                        Thickness = 2,
+                        Transparency = 0.3,
+                    }),
+                }),
+
+                -- Dedicated Tap / Click Surface
+                HitButton = React.createElement("TextButton", {
+                    Size = UDim2.fromScale(1, 1),
+                    BackgroundTransparency = 1,
+                    Text = "",
+                    AutoButtonColor = false,
+                    ZIndex = 15,
+                    [React.Event.Activated] = function()
+                        props.onTileClicked(coord)
+                    end,
+                }),
             })
         end
+    end
+
+    -- 2. Dynamic Visual Tile Layer
+    local tileChildren: { [string]: any } = {}
+    for id, dt in pairs(displayTiles) do
+        local isSelected = selectedCoord ~= nil and BoardCoord.equals(selectedCoord, dt.coord)
+        tileChildren[id] = React.createElement(TileView, {
+            id = id,
+            coord = dt.coord,
+            tile = dt.tile,
+            isSelected = isSelected,
+            width = width,
+            height = height,
+            tileRef = function(rbx: GuiObject?)
+                props.registerTileRef(id, rbx)
+            end,
+        })
     end
 
     return React.createElement("Frame", {
@@ -69,6 +109,7 @@ local function MatchGrid(props: MatchGridProps)
     }, {
         AspectRatio = React.createElement("UIAspectRatioConstraint", {
             AspectRatio = 1,
+            DominantAxis = Enum.DominantAxis.Height,
         }),
 
         OuterCorner = React.createElement("UICorner", {
@@ -80,23 +121,45 @@ local function MatchGrid(props: MatchGridProps)
             Thickness = 4,
         }),
 
-        -- Inner Parchment Board Inset
+        -- Inner Carved Board Inset
         InnerBoard = React.createElement("Frame", {
             Size = UDim2.new(1, -16, 1, -16),
             Position = UDim2.fromScale(0.5, 0.5),
             AnchorPoint = Vector2.new(0.5, 0.5),
-            BackgroundColor3 = Color3.fromRGB(45, 27, 14),
+            BackgroundColor3 = Color3.fromRGB(46, 27, 14),
             BorderSizePixel = 0,
         }, {
             InnerCorner = React.createElement("UICorner", {
-                CornerRadius = UDim.new(0, 10),
+                CornerRadius = UDim.new(0, 12),
             }),
-            Tiles = React.createElement("Frame", {
+
+            -- Layer 1: Static Sockets & Hit Buttons
+            SlotsLayer = React.createElement("Frame", {
                 Size = UDim2.new(1, -8, 1, -8),
                 Position = UDim2.fromScale(0.5, 0.5),
                 AnchorPoint = Vector2.new(0.5, 0.5),
                 BackgroundTransparency = 1,
-            }, children),
+                ZIndex = 1,
+            }, slotChildren),
+
+            -- Layer 2: Animated Tiles Layer
+            TilesLayer = React.createElement("Frame", {
+                Size = UDim2.new(1, -8, 1, -8),
+                Position = UDim2.fromScale(0.5, 0.5),
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundTransparency = 1,
+                ZIndex = 5,
+            }, tileChildren),
+
+            -- Layer 3: Particle Blast & Effects Overlay
+            EffectsLayer = React.createElement("Frame", {
+                ref = props.effectsOverlayRef,
+                Size = UDim2.new(1, -8, 1, -8),
+                Position = UDim2.fromScale(0.5, 0.5),
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundTransparency = 1,
+                ZIndex = 25,
+            }),
         }),
     })
 end
