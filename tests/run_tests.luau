@@ -1,17 +1,19 @@
 --!strict
--- Entry point for Lune test runner (runs BoardLogic and Progression test suites)
+-- Entry point for Lune test runner (runs BoardLogic, Progression, WeightedRandomness, and SpawnCoordinator test suites)
 
 local BoardTests = require("./BoardLogic.spec")
 local ProgressionTests = require("./Progression.spec")
 local WeightedTests = require("./WeightedRandomness.spec")
+local SpawnTests = require("./SpawnCoordinator.spec")
 
 local boardSummary = BoardTests.runAll()
 local progSummary = ProgressionTests.runAll()
 local weightedSummary = WeightedTests.runAll()
+local spawnSummary = SpawnTests.runAll()
 
-local totalFailed = boardSummary.failed + progSummary.failed + weightedSummary.failed
-local totalPassed = boardSummary.passed + progSummary.passed + weightedSummary.passed
-local totalTests = boardSummary.total + progSummary.total + weightedSummary.total
+local totalFailed = boardSummary.failed + progSummary.failed + weightedSummary.failed + spawnSummary.failed
+local totalPassed = boardSummary.passed + progSummary.passed + weightedSummary.passed + spawnSummary.passed
+local totalTests = boardSummary.total + progSummary.total + weightedSummary.total + spawnSummary.total
 
 if totalFailed > 0 then
     error(string.format("Test suite failed with %d error(s)", totalFailed))

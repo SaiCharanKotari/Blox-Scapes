@@ -4,10 +4,11 @@
 
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
+local PlayerCameraController = require(script.Parent:WaitForChild("PlayerCameraController"))
 
 local GardenSceneManager = {}
 
-local gardenFolder: Folder? = nil
+local gardenFolder: Instance? = nil
 local fountainModel: Model? = nil
 local overgrownVines: { BasePart } = {}
 local waterParts: { BasePart } = {}
@@ -16,12 +17,20 @@ local waterEmitters: { ParticleEmitter } = {}
 local originalCameraType: Enum.CameraType = Enum.CameraType.Custom
 local originalCameraCFrame: CFrame = CFrame.new()
 
--- Builds the reproducible prototype courtyard fountain scene
+-- Builds or locates the courtyard fountain scene
 function GardenSceneManager.ensureScene()
-    local existing = Workspace:FindFirstChild("BloomtrailGarden") :: Folder?
-    if existing then
-        gardenFolder = existing
-        fountainModel = existing:FindFirstChild("CourtyardFountain") :: Model?
+    local existingFountain = Workspace:FindFirstChild("CourtyardFountain", true) :: Model?
+    if existingFountain then
+        fountainModel = existingFountain
+        gardenFolder = existingFountain.Parent
+        GardenSceneManager._cacheParts()
+        return
+    end
+
+    local existingFolder = Workspace:FindFirstChild("BloomtrailGarden") :: Folder?
+    if existingFolder then
+        gardenFolder = existingFolder
+        fountainModel = existingFolder:FindFirstChild("CourtyardFountain") :: Model?
         GardenSceneManager._cacheParts()
         return
     end
@@ -209,7 +218,8 @@ function GardenSceneManager.focusCamera()
 
     camera.CameraType = Enum.CameraType.Scriptable
 
-    local targetCFrame = CFrame.new(Vector3.new(0, 11, -22), Vector3.new(0, 3.5, 0))
+    local fountainPos = if fountainModel then fountainModel:GetPivot().Position else Vector3.new(0, 0.5, 25)
+    local targetCFrame = CFrame.new(fountainPos + Vector3.new(0, 11, 22), fountainPos + Vector3.new(0, 3.5, 0))
     TweenService:Create(camera, TweenInfo.new(0.8, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
         CFrame = targetCFrame,
     }):Play()
@@ -217,10 +227,7 @@ end
 
 -- Restores default camera control
 function GardenSceneManager.restoreCamera()
-    local camera = Workspace.CurrentCamera
-    if not camera then return end
-
-    camera.CameraType = Enum.CameraType.Custom
+    PlayerCameraController.restoreFollow()
 end
 
 return GardenSceneManager

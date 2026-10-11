@@ -7,9 +7,11 @@ local BloomtrailShared = ReplicatedStorage:WaitForChild("BloomtrailShared")
 
 local ServerNetwork = require(script.Parent:WaitForChild("Network"):WaitForChild("ServerNetwork"))
 local PlayerProfileService = require(script.Parent:WaitForChild("Services"):WaitForChild("PlayerProfileService"))
+local SpawnCoordinator = require(script.Parent:WaitForChild("Services"):WaitForChild("SpawnCoordinator"))
 
--- Initialize remotes before players connect
+-- Initialize remotes and spawn coordinator before players connect
 ServerNetwork.init()
+SpawnCoordinator.init()
 
 Players.PlayerAdded:Connect(function(player)
     -- Initialize or load profile

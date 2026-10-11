@@ -141,3 +141,19 @@ gantt
 | **Cascade Loop Hangs** | Medium | High | Hard iteration cap of 25 in `GravityResolver.luau`. If exceeded, board forces immediate stabilization and logs warning. |
 | **Transposed Coordinate Bugs** | High | High | Implement a centralized `BoardCoord.luau` helper that strictly converts between `(x, y)` 1-indexed coordinates and grid table slots. |
 | **DataStore Read Failures** | Medium | Critical | Never overwrite an existing player profile with default empty data if `GetAsync` encounters an API outage. |
+
+---
+
+## 4. Strict Future Requirements (Preserved for Future Milestones)
+
+The following architectural and design constraints must be strictly preserved across subsequent milestones:
+
+1. **Independent Player Plots:** Each player will eventually have an independent estate plot.
+2. **Plot Duplication Timing:** The finished prototype plot will be duplicated only after the shared world and restoration systems are stable.
+3. **Multi-Floor Estate Progression:** Players will progressively restore the mansion exterior, garden, fence, driveway, and interior rooms across the first and second floors.
+4. **Permanent Cosmetic Choices:** Each restorable furniture or decoration item will eventually offer a one-time cosmetic choice (e.g., white carpet is free, while royal red carpet costs 20 coins).
+5. **No Refund / Switching Farming:** A confirmed cosmetic choice becomes permanent for that object. There will be no switching or refund farming.
+6. **Viable Free Choices:** Free choices must always remain fully viable and aesthetically polished.
+7. **Resource Economy:** Coins will remain a relatively scarce progression resource earned through match-3 puzzles and approved game rewards.
+8. **Rebirth Progression Tier:** After completing the current mansion's required restoration, the player can choose Rebirth to move to the next house tier, eventually progressing through luxury villas and toward the final space-station tier.
+

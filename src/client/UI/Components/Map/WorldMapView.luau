@@ -19,6 +19,7 @@ export type WorldMapViewProps = {
     profile: PlayerProfile,
     onSelectLevel: (levelId: number) -> (),
     onOpenGarden: () -> (),
+    onBackToExplore: (() -> ())?,
 }
 
 -- Curving S-curve path node offsets (bottom-to-top layout in ScrollingFrame)
@@ -117,10 +118,27 @@ local function WorldMapView(props: WorldMapViewProps)
                 Thickness = 2.5,
             }),
 
-            -- Left: Title
+            -- Left: Back to Explore Button
+            BackButton = if props.onBackToExplore then React.createElement("TextButton", {
+                Size = UDim2.new(0, 96, 0, 38),
+                Position = UDim2.new(0, 10, 0.5, 0),
+                AnchorPoint = Vector2.new(0, 0.5),
+                BackgroundColor3 = ThemeTokens.Colors.RiverStone,
+                Text = "← EXPLORE",
+                Font = ThemeTokens.Typography.ButtonLabel.Font,
+                TextSize = 13,
+                TextColor3 = ThemeTokens.Colors.CedarUmber,
+                AutoButtonColor = true,
+                [React.Event.Activated] = props.onBackToExplore,
+            }, {
+                Corner = React.createElement("UICorner", { CornerRadius = ThemeTokens.Radii.Pill }),
+                Stroke = React.createElement("UIStroke", { Color = ThemeTokens.Colors.CedarUmber, Thickness = 1.5 }),
+            }) else nil,
+
+            -- Title Section
             TitleSection = React.createElement("TextLabel", {
                 Size = UDim2.new(0, 110, 1, 0),
-                Position = UDim2.new(0, 14, 0, 0),
+                Position = if props.onBackToExplore then UDim2.new(0, 114, 0, 0) else UDim2.new(0, 14, 0, 0),
                 BackgroundTransparency = 1,
                 Text = "🌸 TRAIL",
                 Font = ThemeTokens.Typography.DisplayHero.Font,

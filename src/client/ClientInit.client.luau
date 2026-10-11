@@ -11,8 +11,12 @@ local ReactRoblox = require(Packages:WaitForChild("ReactRoblox"))
 
 local App = require(script.Parent:WaitForChild("UI"):WaitForChild("App"))
 local GardenSceneManager = require(script.Parent:WaitForChild("Controllers"):WaitForChild("GardenSceneManager"))
+local PlayerCameraController = require(script.Parent:WaitForChild("Controllers"):WaitForChild("PlayerCameraController"))
 
--- Ensure prototype Courtyard Garden scene exists in Workspace
+-- Initialize robust player camera tracking
+PlayerCameraController.init()
+
+-- Ensure Courtyard Garden scene exists in Workspace
 GardenSceneManager.ensureScene()
 
 local localPlayer = Players.LocalPlayer

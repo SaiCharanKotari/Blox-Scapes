@@ -67,15 +67,15 @@ local function GardenScreen(props: GardenScreenProps)
                 Thickness = 2.5,
             }),
 
-            -- Left: Back to Map Button
+            -- Left: Back to Explore Button
             BackButton = React.createElement("TextButton", {
-                Size = UDim2.new(0, 96, 0, 38),
+                Size = UDim2.new(0, 104, 0, 38),
                 Position = UDim2.new(0, 12, 0.5, 0),
                 AnchorPoint = Vector2.new(0, 0.5),
                 BackgroundColor3 = ThemeTokens.Colors.RiverStone,
-                Text = "← MAP",
+                Text = "← EXPLORE",
                 Font = ThemeTokens.Typography.ButtonLabel.Font,
-                TextSize = 14,
+                TextSize = 13,
                 TextColor3 = ThemeTokens.Colors.CedarUmber,
                 AutoButtonColor = true,
                 [React.Event.Activated] = props.onBackToMap,

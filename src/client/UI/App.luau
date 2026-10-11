@@ -1,6 +1,6 @@
 --!strict
 -- App.luau: Declarative React-Lua root application router for Project Bloomtrail
--- Manages screen routing between WorldMap, PuzzleScreen, and GardenScreen
+-- Manages screen routing between Exploration (3D world), WorldMap, PuzzleScreen, and GardenScreen
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Packages = ReplicatedStorage:WaitForChild("Packages")
@@ -9,18 +9,21 @@ local React = require(Packages:WaitForChild("React"))
 local BloomtrailShared = ReplicatedStorage:WaitForChild("BloomtrailShared")
 local ProfileTypes = require(BloomtrailShared:WaitForChild("Types"):WaitForChild("ProfileTypes"))
 
+local ExplorationHUD = require(script.Parent.Components.Exploration.ExplorationHUD)
 local WorldMapView = require(script.Parent.Components.Map.WorldMapView)
 local PuzzleScreen = require(script.Parent.Components.Puzzle.PuzzleScreen)
 local GardenScreen = require(script.Parent.Components.Garden.GardenScreen)
 
 local BloomtrailClient = script:FindFirstAncestor("BloomtrailClient")
 local ClientNetwork = require(BloomtrailClient:WaitForChild("Network"):WaitForChild("ClientNetwork"))
+local PlayerCameraController = require(BloomtrailClient:WaitForChild("Controllers"):WaitForChild("PlayerCameraController"))
 
 type PlayerProfile = ProfileTypes.PlayerProfile
-type ScreenName = "WorldMap" | "Puzzle" | "Garden"
+type ScreenName = "Exploration" | "WorldMap" | "Puzzle" | "Garden"
 
 local function App()
-    local currentScreen, setCurrentScreen = React.useState("WorldMap" :: ScreenName)
+    -- Start directly in the 3D world per Gate 3.2 requirements
+    local currentScreen, setCurrentScreen = React.useState("Exploration" :: ScreenName)
     local activeLevelId, setActiveLevelId = React.useState(1)
     
     local profile, setProfile = React.useState(function()
@@ -29,7 +32,6 @@ local function App()
 
     -- Subscribe to real-time profile sync updates from server
     React.useEffect(function()
-        -- Fetch fresh profile upon mount
         task.spawn(function()
             local serverProfile = ClientNetwork.getProfile()
             if serverProfile then
@@ -49,17 +51,22 @@ local function App()
     end, {})
 
     -- Screen Navigation Callbacks
-    local handleSelectLevel = React.useCallback(function(levelId: number)
-        setActiveLevelId(levelId)
-        setCurrentScreen("Puzzle")
+    local handleOpenExploration = React.useCallback(function()
+        setCurrentScreen("Exploration")
+        PlayerCameraController.restoreFollow()
+    end, {})
+
+    local handleOpenMap = React.useCallback(function()
+        setCurrentScreen("WorldMap")
     end, {})
 
     local handleOpenGarden = React.useCallback(function()
         setCurrentScreen("Garden")
     end, {})
 
-    local handleReturnToMap = React.useCallback(function()
-        setCurrentScreen("WorldMap")
+    local handleSelectLevel = React.useCallback(function(levelId: number)
+        setActiveLevelId(levelId)
+        setCurrentScreen("Puzzle")
     end, {})
 
     local handleProfileUpdated = React.useCallback(function(newProfile: PlayerProfile)
@@ -69,20 +76,28 @@ local function App()
     if currentScreen == "Puzzle" then
         return React.createElement(PuzzleScreen, {
             levelId = activeLevelId,
-            onReturnToMap = handleReturnToMap,
+            onReturnToMap = handleOpenExploration,
             onOpenGarden = handleOpenGarden,
             onProfileUpdated = handleProfileUpdated,
         })
     elseif currentScreen == "Garden" then
         return React.createElement(GardenScreen, {
             profile = profile,
-            onBackToMap = handleReturnToMap,
+            onBackToMap = handleOpenExploration,
             onProfileUpdated = handleProfileUpdated,
         })
-    else
+    elseif currentScreen == "WorldMap" then
         return React.createElement(WorldMapView, {
             profile = profile,
             onSelectLevel = handleSelectLevel,
+            onOpenGarden = handleOpenGarden,
+            onBackToExplore = handleOpenExploration,
+        })
+    else
+        -- 3D Estate Exploration Screen (Default)
+        return React.createElement(ExplorationHUD, {
+            profile = profile,
+            onOpenMap = handleOpenMap,
             onOpenGarden = handleOpenGarden,
         })
     end
